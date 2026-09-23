@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palmer Cooper Wallace — Tenis firmados</title>
+<meta name="description" content="Cada proyecto que terminamos, el cliente nos lo firma en unos tenis. Gíralos en 3D y encuentra las marcas con las que hemos trabajado.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* colores tomados de palmercooperwallace.com */
+  :root{
+    --papel:#ECEBE9;
+    --tinta:#1C1D20;
+    --tinta-suave:#5E6068;
+    --marino:#0B1427;
+    --magenta:#D8006B;
+    --linea:rgba(28,29,32,.14);
+    --fondo:var(--papel);
+    --texto:var(--tinta);
+    --texto-suave:var(--tinta-suave);
+  }
+  body.oscuro{
+    --fondo:var(--marino);
+    --texto:#F3F2EF;
+    --texto-suave:#A9AEBD;
+    --linea:rgba(255,255,255,.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{background:var(--papel);}
+  body{background:var(--fondo); color:var(--texto); font-family:'Manrope',system-ui,sans-serif;
+       transition:background-color .7s ease, color .7s ease; -webkit-font-smoothing:antialiased;}
+  /* mientras el panel de una marca o el modo explorar están abiertos, la página no hace scroll */
+  html.bloqueado, html.bloqueado body{overflow:hidden;}
+
+  /* el lienzo va fijo detrás del texto: el scroll mueve la cámara, no el lienzo.
+     pan-y deja al navegador el scroll vertical en táctil y nos da el arrastre horizontal para girar */
+  #escena{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:1;
+          touch-action:pan-y; cursor:grab; outline:none;}
+  #escena.arrastrando{cursor:grabbing;}
+  html.explorando #escena{z-index:30; touch-action:none;}
+
+  header.barra{position:fixed; top:0; left:0; right:0; z-index:40; display:flex; align-items:center;
+    justify-content:space-between; padding:20px clamp(16px,4vw,48px); pointer-events:none;}
+  header.barra > *{pointer-events:auto;}
+  .marca{font-weight:800; font-size:15px; letter-spacing:.01em; color:var(--texto); text-decoration:none;
+         transition:color .7s ease;}
+  .marca small{display:block; font-weight:500; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+               color:var(--texto-suave); margin-top:2px;}
+  .boton{font:inherit; font-size:14px; font-weight:700; border:0; cursor:pointer; border-radius:999px;
+         padding:12px 20px; background:var(--magenta); color:#fff; text-decoration:none; display:inline-flex;
+         align-items:center; gap:8px; transition:transform .2s ease, background-color .2s ease;}
+  .boton:hover{transform:translateY(-1px); background:#B8005B;}
+  .hotspot:focus-visible{outline:none;}
+  .hotspot:focus-visible .nombre, .boton:focus-visible, .cerrar:focus-visible{outline:3px solid var(--magenta); outline-offset:3px;}
+  .boton.fantasma{background:color-mix(in srgb, var(--fondo) 75%, transparent); backdrop-filter:blur(6px); color:var(--texto); box-shadow:inset 0 0 0 1.5px var(--linea);}
+  .boton.fantasma:hover{background:rgba(127,127,127,.1);}
+
+  /* ---------- recorrido con scroll ---------- */
+  /* las secciones no atrapan el puntero: así el arrastre sobre el tenis llega al lienzo */
+  main{position:relative; z-index:2; pointer-events:none; transition:opacity .4s ease;}
+  html.explorando main, html.enfocado main{opacity:0;}
+  .paso{min-height:100vh; min-height:100svh; display:flex; align-items:center;
+        padding:96px clamp(16px,6vw,96px);}
+  .paso[data-lado="der"]{justify-content:flex-end;}
+  .paso[data-lado="centro"]{justify-content:center; align-items:flex-end; text-align:center;}
+  .texto{max-width:430px; pointer-events:auto; opacity:0; transform:translateY(24px);
+         transition:opacity .8s ease, transform .8s ease;}
+  .texto.visible{opacity:1; transform:none;}
+  .etiqueta{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--magenta);
+            margin-bottom:16px; display:block;}
+  h1{font-size:clamp(38px,5.4vw,72px); line-height:1.02; font-weight:800; letter-spacing:-.025em;}
+  h2{font-size:clamp(30px,3.6vw,48px); line-height:1.06; font-weight:800; letter-spacing:-.02em;}
+  h1 em, h2 em{font-style:normal; color:var(--magenta);}
+  .texto p{margin-top:18px; font-size:17px; line-height:1.55; color:var(--texto-suave);}
+  .texto .acciones{margin-top:26px; display:flex; gap:10px; flex-wrap:wrap;}
+  .paso[data-lado="centro"] .acciones{justify-content:center;}
+  .pista{margin-top:26px; font-size:13px; color:var(--texto-suave); display:flex; align-items:center; gap:10px;}
+  .paso[data-lado="centro"] .pista{justify-content:center;}
+  .pista svg{flex:none;}
+  .cifras{display:flex; gap:28px; margin-top:24px; justify-content:center;}
+  .cifras b{display:block; font-size:34px; font-weight:800; color:var(--texto);}
+  .cifras span{font-size:13px; color:var(--texto-suave);}
+
+  /* ---------- hotspots sobre las firmas ---------- */
+  #hotspots{position:fixed; inset:0; z-index:3; pointer-events:none;}
+  html.explorando #hotspots{z-index:31;}
+  /* el origen del botón es el punto 3D: un anillo hueco marca la firma sin taparla y la
+     etiqueta queda arriba, unida por una línea guía */
+  .hotspot{position:absolute; left:0; top:0; width:0; height:0; border:0; padding:0; background:none;
+           cursor:pointer; font:inherit; opacity:0; pointer-events:none; will-change:transform,opacity;}
+  .hotspot.activo > *{pointer-events:auto;}
+  .hotspot > *{position:absolute; pointer-events:none;}
+  .hotspot .anillo{left:-9px; top:-9px; width:18px; height:18px; border-radius:50%;
+                   border:2.5px solid var(--magenta); box-shadow:0 0 0 2px rgba(255,255,255,.8);}
+  .hotspot .anillo::after{content:''; position:absolute; inset:-5px; border-radius:50%;
+                          border:2px solid var(--magenta); animation:latido 1.8s ease-out infinite;}
+  @keyframes latido{from{transform:scale(.8); opacity:.9;} to{transform:scale(2); opacity:0;}}
+  .hotspot .guia{left:-1px; bottom:9px; width:2px; height:34px; background:var(--magenta);}
+  .hotspot .nombre{bottom:43px; left:0; transform:translateX(-50%); white-space:nowrap;
+                   background:var(--magenta); color:#fff; font-size:12px; font-weight:800; letter-spacing:.08em;
+                   padding:7px 12px; border-radius:999px; box-shadow:0 6px 18px rgba(216,0,107,.35);
+                   transition:transform .2s ease;}
+  .hotspot .nombre::after{content:' +'; font-weight:600;}
+  .hotspot:hover .nombre{transform:translateX(-50%) scale(1.06);}
+
+  /* ---------- panel de la marca ---------- */
+  #panel{position:fixed; z-index:45; top:50%; right:clamp(16px,4vw,48px); width:min(380px,calc(100vw - 32px));
+         transform:translate(calc(100% + 60px),-50%); transition:transform .55s cubic-bezier(.2,.8,.2,1);
+         background:#fff; color:var(--tinta); border-radius:22px; padding:28px;
+         box-shadow:0 24px 60px rgba(11,20,39,.22);}
+  #panel.abierto{transform:translate(0,-50%);}
+  #panel .etiqueta{margin-bottom:10px;}
+  #panel h3{font-size:34px; font-weight:800; letter-spacing:-.01em;}
+  #panel dl{margin-top:18px; display:grid; grid-template-columns:auto 1fr; gap:8px 16px; font-size:14px;}
+  #panel dt{color:var(--tinta-suave);}
+  #panel dd{font-weight:600;}
+  #panel p{margin-top:16px; font-size:15px; line-height:1.55; color:var(--tinta-suave);}
+  #panel .nota{margin-top:18px; font-size:12px; padding:10px 12px; border-radius:10px; background:#FFF1F7; color:#8A0045;}
+  .cerrar{position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:0;
+          background:#F1F0EE; cursor:pointer; font-size:18px; line-height:1; color:var(--tinta);}
+
+  /* ---------- modo explorar ---------- */
+  #explorar-ui{position:fixed; z-index:42; left:0; right:0; bottom:28px; display:flex; flex-direction:column;
+               align-items:center; gap:12px; opacity:0; pointer-events:none; transition:opacity .4s ease;}
+  html.explorando #explorar-ui{opacity:1; pointer-events:auto;}
+  html.enfocado #explorar-ui{opacity:0; pointer-events:none;}
+  #explorar-ui .pista{margin:0; background:rgba(255,255,255,.8); backdrop-filter:blur(8px); color:var(--tinta);
+                      padding:8px 14px; border-radius:999px;}
+
+  /* ---------- cargando / sin 3D ---------- */
+  #cargando{position:fixed; inset:0; z-index:60; background:var(--papel); display:flex; flex-direction:column;
+            align-items:center; justify-content:center; gap:14px; transition:opacity .6s ease;}
+  #cargando.oculto{opacity:0; pointer-events:none;}
+  #cargando .barra-progreso{width:160px; height:3px; border-radius:3px; background:var(--linea); overflow:hidden;}
+  #cargando .barra-progreso i{display:block; height:100%; width:0; background:var(--magenta); transition:width .2s ease;}
+  #cargando span{font-size:13px; color:var(--tinta-suave); text-align:center; max-width:280px;}
+  #respaldo{display:none; position:fixed; inset:0; z-index:1; align-items:center; justify-content:flex-end;
+            padding:0 4vw; pointer-events:none;}
+  #respaldo img{width:min(52vw,640px); height:auto;}
+  html.sin3d #respaldo{display:flex;}
+  html.sin3d #escena, html.sin3d #hotspots, html.sin3d [data-requiere-3d]{display:none !important;}
+
+  /* ---------- celular: el tenis arriba, el texto abajo ---------- */
+  @media (max-width:767px){
+    .paso, .paso[data-lado="der"], .paso[data-lado="centro"]{justify-content:center; align-items:flex-end;
+          padding:96px 16px 40px;}
+    .texto{max-width:none; width:100%; background:color-mix(in srgb, var(--fondo) 86%, transparent);
+           backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:22px; border-radius:20px;
+           transition:opacity .8s ease, transform .8s ease, background-color .7s ease;}
+    .texto p{font-size:15px;}
+    .marca small{display:none;}
+    #panel{top:auto; bottom:16px; right:16px; transform:translateY(calc(100% + 40px));}
+    #panel.abierto{transform:none;}
+    #respaldo{align-items:flex-start; justify-content:center; padding-top:80px;}
+    #respaldo img{width:92vw;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001s !important; transition-duration:.2s !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="cargando" role="status" aria-live="polite">
+  <div class="barra-progreso"><i></i></div>
+  <span>Cargando los tenis…</span>
+</div>
+
+<canvas id="escena" tabindex="-1" aria-label="Tenis firmado en 3D. Arrastra para girarlo."></canvas>
+<div id="respaldo"><img alt="Tenis Nike Dunk High verde cubierto de firmas de clientes"></div>
+<div id="hotspots"></div>
+
+<header class="barra">
+  <a class="marca" href="https://palmercooperwallace.com/">Palmer Cooper Wallace<small>Tenis firmados</small></a>
+  <button class="boton fantasma" type="button" data-explorar data-requiere-3d>Explorar en 360°</button>
+</header>
+
+<!-- Cada <section> es una parada del recorrido. Su posición en la página decide cuándo el
+     tenis llega a la pose correspondiente de PASOS (mismo orden). -->
+<main id="recorrido">
+  <section class="paso" data-lado="izq">
+    <div class="texto">
+      <span class="etiqueta">Palmer Cooper Wallace</span>
+      <h1>Cada proyecto termina con una <em>firma</em>.</h1>
+      <p>Cuando cerramos un proyecto, el cliente nos firma unos tenis. Con los años se volvieron nuestro portafolio más honesto.</p>
+      <div class="pista" data-requiere-3d>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Baja para verlos de cerca
+      </div>
+    </div>
+  </section>
+
+  <section class="paso" data-lado="der">
+    <div class="texto">
+      <span class="etiqueta">01 — El ritual</span>
+      <h2>Unos tenis, <em>muchas manos</em>.</h2>
+      <p>Firma todo el equipo: quien nos contrató, quien lo aprobó, quien se desveló con nosotros. Dedicatorias, chistes internos y, entre ellas, las marcas.</p>
+      <div class="pista" data-requiere-3d>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>
+        Arrastra de lado sobre el tenis para girarlo
+      </div>
+    </div>
+  </section>
+
+  <section class="paso" data-lado="izq" data-tono="oscuro">
+    <div class="texto">
+      <span class="etiqueta">02 — Las marcas</span>
+      <h2>Busca las firmas <em>que pesan</em>.</h2>
+      <p>Algunas se escriben con plumón y dicen mucho más que su tamaño. Toca el punto para conocer el proyecto detrás.</p>
+    </div>
+  </section>
+
+  <section class="paso" data-lado="centro">
+    <div class="texto">
+      <span class="etiqueta">03 — Gíralo</span>
+      <h2>Míralo por <em>todos lados</em>.</h2>
+      <div class="acciones" data-requiere-3d>
+        <button class="boton" type="button" data-explorar>Explorar en 360°</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso" data-lado="centro">
+    <div class="texto">
+      <span class="etiqueta">La colección</span>
+      <h2>Y apenas es <em>el primero</em>.</h2>
+      <div class="cifras">
+        <div><b>4</b><span>pares</span></div>
+        <div><b>8</b><span>tenis</span></div>
+        <div><b>+40</b><span>firmas</span></div>
+      </div>
+      <div class="acciones">
+        <a class="boton" href="https://palmercooperwallace.com/">Trabajemos juntos</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<aside id="panel" role="dialog" aria-modal="false" aria-labelledby="panel-marca" hidden>
+  <button class="cerrar" type="button" aria-label="Cerrar">✕</button>
+  <span class="etiqueta">Proyecto</span>
+  <h3 id="panel-marca"></h3>
+  <dl>
+    <dt>Proyecto</dt><dd data-campo="proyecto"></dd>
+    <dt>Año</dt><dd data-campo="anio"></dd>
+  </dl>
+  <p data-campo="texto"></p>
+  <div class="nota" data-campo="nota"></div>
+</aside>
+
+<div id="explorar-ui">
+  <div class="pista">Arrastra para girar · pellizca o usa la rueda para acercar</div>
+  <button class="boton" type="button" id="salir-explorar">Volver al recorrido</button>
+</div>
+
+<!-- Si three.js o GSAP no llegan del CDN, el módulo nunca corre: este guardián lo detecta y deja
+     la página como texto con una foto del tenis, en vez de un cargador girando para siempre. -->
+<script>
+  window.tenisSin3D = function(motivo){
+    if(document.documentElement.classList.contains('sin3d')) return new Error(motivo);
+    console.warn('[tenis] sin 3D:', motivo);
+    document.documentElement.classList.add('sin3d');
+    document.querySelector('#respaldo img').src = 'modelos/tenis_verde_izq.webp';
+    document.querySelectorAll('.texto').forEach(function(t){ t.classList.add('visible'); });
+    document.getElementById('cargando').classList.add('oculto');
+    return new Error(motivo);   // el módulo hace `throw tenisSin3D(...)` para detenerse con un mensaje legible
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){ if(!window.tenisModulo) window.tenisSin3D('no cargó el módulo 3D'); }, 0);
+  });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+window.tenisModulo = true;
+if(typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') throw window.tenisSin3D('no cargó GSAP');
+gsap.registerPlugin(ScrollTrigger);
+
+const DEBUG = new URLSearchParams(location.search).has('debug');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TAU = Math.PI * 2;
+
+/* ---------------------------------------------------------
+   1. DATOS: el tenis, sus firmas importantes y el guion del scroll
+--------------------------------------------------------- */
+const TENIS = {
+  archivo: 'modelos/tenis_verde_izq.glb',
+  // alto (en fracción del largo del tenis) que se recorta desde abajo: ahí quedan los restos
+  // de la base del escaneo. Se quita cuando el pipeline de Blender los limpie.
+  corteBase: 0.012,
+  // la luz viene horneada en la textura del escaneo: se dibuja sin sombreado, solo con este ajuste
+  brillo: 1.0,
+};
+
+/* Coordenadas en el espacio del tenis ya centrado y normalizado (largo = 1).
+   Para ubicar una firma nueva: abrir con ?debug, hacer clic sobre ella y copiar lo que sale en consola. */
+const HOTSPOTS = [
+  {
+    id: 'krups', marca: 'KRUPS',
+    punto: [-0.142, -0.182, -0.272], normal: [-0.78, 0.59, -0.22],
+    proyecto: 'Nombre del proyecto', anio: '2025',
+    texto: 'Aquí va una o dos líneas sobre qué hicimos con la marca y qué resultado tuvo.',
+    nota: 'Texto de ejemplo. Falta confirmar con la agencia el permiso para nombrar al cliente.',
+  },
+];
+
+/* Poses del tenis, una por <section>, en el mismo orden.
+   x, y: dónde queda el centro del tenis, en fracción de la pantalla (0 = centro).
+   tam: largo del tenis en fracción del ancho de pantalla.
+   giro: vuelta sobre su eje vertical (rad). incl/ladeo: inclinación hacia la cámara y de lado.
+   foco: 0 = centrado en el tenis, 1 = centrado en el primer hotspot.
+   puntos: visibilidad de los hotspots. vaiven: balanceo suave en reposo.
+   libre: 1 = el giro que da el usuario se queda; 0 = regresa solo a la pose.
+   El giro siempre avanza en el mismo sentido (se suman vueltas con TAU) para que el scroll
+   se sienta como una sola vuelta continua y no como ida y regreso. */
+function poses(celular){
+  const k = HOTSPOTS[0];
+  // giro 0 = el talón hacia la cámara
+  const LADO_YUBAL = Math.PI / 2;        // costado con "YUBAL Oloarte" y "powered by KRUPS", punta a la izquierda
+  const LADO_CHOSEN = 3 * Math.PI / 2;   // costado con "THE CHOSEN ONES", punta a la derecha
+  const base = {x:0, y:0, tam:.4, giro:0, incl:.12, ladeo:0, foco:0, puntos:0, vaiven:0, libre:0, sombra:1};
+  const P = celular ? [
+    {x:0,   y:.2,  tam:.86, giro:LADO_YUBAL + .45, incl:.2, ladeo:-.08, vaiven:1},
+    {x:0,   y:.2,  tam:.86, giro:LADO_CHOSEN - .4, incl:.12},
+    {x:0,   y:.17, tam:1.45, giro:frente(k) + TAU, incl:inclFrente(k) * .5, foco:.9, puntos:1, sombra:0},
+    {x:0,   y:.16, tam:.9,  giro:LADO_CHOSEN + TAU, incl:.1, puntos:1, libre:1},
+    {x:0,   y:.24, tam:.6,  giro:LADO_CHOSEN + TAU + .6, incl:.75, ladeo:.1},
+  ] : [
+    {x:.21, y:-.02, tam:.44, giro:LADO_YUBAL + .45, incl:.2, ladeo:-.08, vaiven:1},
+    {x:-.2, y:-.02, tam:.44, giro:LADO_CHOSEN - .4, incl:.12},
+    {x:.25, y:-.06, tam:.72, giro:frente(k) + TAU, incl:inclFrente(k) * .5, foco:.9, puntos:1, sombra:0},
+    {x:0,   y:.07,  tam:.5,  giro:LADO_CHOSEN + TAU, incl:.1, puntos:1, libre:1},
+    {x:0,   y:.14,  tam:.34, giro:LADO_CHOSEN + TAU + .6, incl:.75, ladeo:.1},
+  ];
+  return P.map(p => Object.assign({}, base, p));
+}
+
+/* ---------------------------------------------------------
+   2. ESCENA
+--------------------------------------------------------- */
+const canvas = document.getElementById('escena');
+let renderer;
+try{
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+}catch(err){
+  throw window.tenisSin3D('sin WebGL');
+}
+const pantallaChica = innerWidth <= 767;
+renderer.setPixelRatio(Math.min(devicePixelRatio, pantallaChica ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.localClippingEnabled = true;
+renderer.setClearColor(0x000000, 0);
+canvas.addEventListener('webglcontextlost', (e)=>{
+  e.preventDefault();
+  window.tenisSin3D('se perdió el contexto WebGL');
+});
+
+const scene = new THREE.Scene();
+const CAM_DIST = 5;
+const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.05, 50);
+camera.position.set(0, 0, CAM_DIST);
+
+// inclinación (hacia la cámara y de lado) > giro sobre su eje > el tenis centrado y normalizado
+const inclinacion = new THREE.Group();
+const giroGrupo = new THREE.Group();
+inclinacion.add(giroGrupo);
+scene.add(inclinacion);
+
+const planoCorte = new THREE.Plane();
+const planoCorteLocal = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let mallas = [];
+let sombra;
+
+/* ---------------------------------------------------------
+   3. CARGA DEL MODELO
+--------------------------------------------------------- */
+const cargando = document.getElementById('cargando');
+const barra = cargando.querySelector('i');
+const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/');
+const loader = new GLTFLoader().setDRACOLoader(draco);
+
+loader.load(TENIS.archivo, (gltf)=>{
+  const modelo = gltf.scene;
+  // centrar en su caja y normalizar el largo a 1: todas las poses y hotspots quedan en esa escala
+  const caja = new THREE.Box3().setFromObject(modelo);
+  const tam = caja.getSize(new THREE.Vector3());
+  const centro = caja.getCenter(new THREE.Vector3());
+  const escala = 1 / Math.max(tam.x, tam.y, tam.z);
+  modelo.position.copy(centro).multiplyScalar(-escala);
+  modelo.scale.setScalar(escala);
+  giroGrupo.add(modelo);
+  const pisoY = -tam.y * escala / 2;
+  planoCorteLocal.constant = -(pisoY + TENIS.corteBase);
+
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  modelo.traverse((o)=>{
+    if(!o.isMesh) return;
+    const viejo = o.material;
+    if(viejo.map) viejo.map.anisotropy = Math.min(8, maxAniso);
+    // luz horneada: material sin sombreado. El normal map no aporta nada y se libera de la GPU.
+    o.material = new THREE.MeshBasicMaterial({
+      map: viejo.map, color: new THREE.Color().setScalar(TENIS.brillo),
+      side: viejo.side, clippingPlanes: [planoCorte],
+    });
+    if(viejo.normalMap) viejo.normalMap.dispose();
+    viejo.dispose();
+    mallas.push(o);
+  });
+
+  sombra = crearSombra(pisoY);
+  giroGrupo.add(sombra);
+
+  arrancar();
+}, (ev)=>{
+  if(ev.total) barra.style.width = (100 * ev.loaded / ev.total).toFixed(0) + '%';
+}, (err)=>{
+  console.error(err);
+  window.tenisSin3D('no se pudo cargar el modelo');
+});
+
+// sombra de contacto: un degradado bajo la suela, gira con el tenis
+function crearSombra(pisoY){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(11,20,39,.42)'); grad.addColorStop(.55, 'rgba(11,20,39,.16)'); grad.addColorStop(1, 'rgba(11,20,39,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  const mat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false});
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  m.rotation.x = -Math.PI / 2;
+  m.scale.set(.5, 1.12, 1);   // el tenis es largo en z
+  m.position.y = pisoY + TENIS.corteBase - .004;
+  m.renderOrder = -1;
+  return m;
+}
+
+/* ---------------------------------------------------------
+   4. HELPERS
+--------------------------------------------------------- */
+const V = (a)=> new THREE.Vector3().fromArray(a);
+// ángulo de giro que deja la normal del hotspot mirando a la cámara
+function frente(h){ const n = V(h.normal); return Math.atan2(-n.x, n.z); }
+// inclinación hacia la cámara que deja la firma de frente (las de la puntera miran hacia arriba)
+function inclFrente(h){ const n = V(h.normal).normalize(); return Math.atan2(n.y, Math.hypot(n.x, n.z)); }
+function cercano(angulo, a){ return angulo + Math.round((a - angulo) / TAU) * TAU; }
+const lerp = THREE.MathUtils.lerp;
+const clamp = THREE.MathUtils.clamp;
+function mezclar(a, b, t){ const r = {}; for(const k in a) r[k] = lerp(a[k], b[k] ?? a[k], t); return r; }
+
+/* ---------------------------------------------------------
+   5. SCROLL: GSAP interpola `estado` entre las poses
+--------------------------------------------------------- */
+const estado = {};          // la pose que dicta el scroll en este momento
+const modo = {explorar:0, foco:0};   // mezclas 0..1 hacia el modo explorar y el acercamiento a una marca
+let poseFoco = null;
+let hotspotFoco = HOTSPOTS[0];
+
+function construirRecorrido(celular){
+  const P = poses(celular);
+  Object.assign(estado, P[0]);
+  const tl = gsap.timeline({defaults:{ease:'power1.inOut', duration:1}});
+  for(let i = 1; i < P.length; i++) tl.to(estado, P[i], i - 1);
+  ScrollTrigger.create({trigger:'#recorrido', start:'top top', end:'bottom bottom',
+                        scrub: reducedMotion ? true : .7, animation:tl});
+}
+
+function arrancar(){
+  const mm = gsap.matchMedia();
+  mm.add('(max-width: 767px)', ()=> construirRecorrido(true));
+  mm.add('(min-width: 768px)', ()=> construirRecorrido(false));
+
+  document.querySelectorAll('.paso').forEach((sec)=>{
+    const texto = sec.querySelector('.texto');
+    ScrollTrigger.create({trigger:sec, start:'top 65%', end:'bottom 35%',
+      onToggle:(st)=> texto.classList.toggle('visible', st.isActive)});
+    if(sec.dataset.tono === 'oscuro'){
+      ScrollTrigger.create({trigger:sec, start:'top 55%', end:'bottom 45%',
+        onToggle:(st)=> document.body.classList.toggle('oscuro', st.isActive)});
+    }
+  });
+
+  crearHotspots();
+  requestAnimationFrame(cuadro);
+  cargando.classList.add('oculto');
+  window.tenis3D = true;
+}
+
+/* ---------------------------------------------------------
+   6. GIRO CON ARRASTRE (y pellizco en modo explorar)
+   En el recorrido solo cuenta el arrastre horizontal: el vertical lo toma el navegador
+   para hacer scroll (touch-action:pan-y). En modo explorar se gira en los dos ejes.
+--------------------------------------------------------- */
+let giroUsuario = 0, velGiro = 0;
+let inclUsuario = 0, zoomUsuario = 1;
+let arrastrando = false, ultX = 0, ultY = 0, ultT = 0, bajoX = 0, bajoY = 0, seMovio = false;
+const dedos = new Map();
+let pellizcoPrev = 0;
+
+canvas.addEventListener('pointerdown', (e)=>{
+  if(e.pointerType === 'mouse') e.preventDefault();   // que arrastrar no seleccione el texto de encima
+  dedos.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(dedos.size === 2){
+    arrastrando = false; pellizcoPrev = distanciaDedos(); return;
+  }
+  arrastrando = true; seMovio = false;
+  ultX = bajoX = e.clientX; ultY = bajoY = e.clientY; ultT = performance.now(); velGiro = 0;
+  canvas.classList.add('arrastrando');
+});
+function soltar(e){
+  dedos.delete(e.pointerId);
+  if(dedos.size < 2) pellizcoPrev = 0;
+  if(arrastrando && !seMovio && DEBUG) depurarClic(e);
+  arrastrando = false; canvas.classList.remove('arrastrando');
+}
+addEventListener('pointerup', soltar);
+addEventListener('pointercancel', soltar);
+addEventListener('pointermove', (e)=>{
+  if(dedos.has(e.pointerId)) dedos.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(dedos.size === 2 && modo.explorar > .5){
+    const d = distanciaDedos();
+    if(pellizcoPrev) zoomUsuario = clamp(zoomUsuario * d / pellizcoPrev, .7, 2.6);
+    pellizcoPrev = d; return;
+  }
+  if(!arrastrando || modo.foco > .01) return;
+  const now = performance.now(), dt = Math.max(1, now - ultT);
+  const dx = e.clientX - ultX, dy = e.clientY - ultY;
+  if(Math.hypot(e.clientX - bajoX, e.clientY - bajoY) > 6) seMovio = true;
+  const sens = 7 / innerWidth;   // cruzar la pantalla ≈ una vuelta completa
+  giroUsuario += dx * sens;
+  velGiro = dx * sens / dt * 1000;
+  if(modo.explorar > .5) inclUsuario = clamp(inclUsuario + dy * sens * .6, -.35, 1.1);
+  ultX = e.clientX; ultY = e.clientY; ultT = now;
+});
+function distanciaDedos(){ const [a, b] = [...dedos.values()]; return Math.hypot(a.x - b.x, a.y - b.y); }
+canvas.addEventListener('wheel', (e)=>{
+  if(modo.explorar < .5) return;   // en el recorrido la rueda hace scroll normal
+  e.preventDefault();
+  zoomUsuario = clamp(zoomUsuario * Math.exp(-e.deltaY * .0015), .7, 2.6);
+}, {passive:false});
+
+/* ---------------------------------------------------------
+   7. MODO EXPLORAR
+--------------------------------------------------------- */
+const html = document.documentElement;
+function entrarExplorar(){
+  cerrarPanel();
+  html.classList.add('explorando', 'bloqueado');
+  inclUsuario = 0; zoomUsuario = 1;
+  gsap.to(modo, {explorar:1, duration: reducedMotion ? .2 : 1, ease:'power2.inOut'});
+  document.getElementById('salir-explorar').focus({preventScroll:true});
+}
+function salirExplorar(){
+  if(!html.classList.contains('explorando')) return;
+  cerrarPanel();
+  html.classList.remove('explorando', 'bloqueado');
+  gsap.to(modo, {explorar:0, duration: reducedMotion ? .2 : .9, ease:'power2.inOut'});
+}
+document.querySelectorAll('[data-explorar]').forEach(b => b.addEventListener('click', entrarExplorar));
+document.getElementById('salir-explorar').addEventListener('click', salirExplorar);
+addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){ if(panel.classList.contains('abierto')) cerrarPanel(); else salirExplorar(); }
+  if(modo.explorar > .5 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
+    velGiro = (e.key === 'ArrowLeft' ? -1 : 1) * 2.5;
+  }
+});
+function poseExplorar(){
+  const celular = innerWidth <= 767;
+  // conserva el giro que traía el recorrido: al entrar solo se centra y crece, no da una vuelta
+  return {x:0, y:celular ? .06 : .02, tam:(celular ? .9 : .5) * zoomUsuario, giro:estado.giro, incl:.12 + inclUsuario,
+          ladeo:0, foco:0, puntos:1, vaiven:0, libre:1, sombra:1};
+}
+
+/* ---------------------------------------------------------
+   8. HOTSPOTS Y PANEL DE MARCA
+--------------------------------------------------------- */
+const capa = document.getElementById('hotspots');
+const panel = document.getElementById('panel');
+function crearHotspots(){
+  for(const h of HOTSPOTS){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'hotspot';
+    b.setAttribute('aria-label', 'Ver el proyecto con ' + h.marca);
+    b.innerHTML = '<span class="anillo"></span><span class="guia"></span><span class="nombre"></span>';
+    b.querySelector('.nombre').textContent = h.marca;
+    b.addEventListener('click', ()=> abrirPanel(h));
+    capa.appendChild(b);
+    h.el = b; h.p = V(h.punto); h.n = V(h.normal).normalize();
+  }
+}
+function abrirPanel(h){
+  hotspotFoco = h;
+  panel.querySelector('#panel-marca').textContent = h.marca;
+  for(const campo of ['proyecto', 'anio', 'texto', 'nota'])
+    panel.querySelector(`[data-campo="${campo}"]`).textContent = h[campo] || '';
+  panel.hidden = false;
+  requestAnimationFrame(()=> panel.classList.add('abierto'));
+  html.classList.add('bloqueado', 'enfocado');
+  // la pose de acercamiento parte del giro actual para dar la vuelta por el lado corto
+  const celular = innerWidth <= 767;
+  const giroActual = ultimaPose.giro;
+  poseFoco = {x: celular ? 0 : -.16, y: celular ? .24 : 0, tam: celular ? 2.1 : 1.35,
+              giro: cercano(frente(h), giroActual), incl:inclFrente(h) * .75, ladeo:0, foco:1, puntos:0, vaiven:0, libre:1, sombra:0};
+  gsap.to(modo, {foco:1, duration: reducedMotion ? .2 : 1.1, ease:'power3.inOut'});
+  panel.querySelector('.cerrar').focus({preventScroll:true});
+}
+function cerrarPanel(){
+  if(!panel.classList.contains('abierto')) return;
+  panel.classList.remove('abierto');
+  html.classList.remove('enfocado');
+  if(!html.classList.contains('explorando')) html.classList.remove('bloqueado');
+  gsap.to(modo, {foco:0, duration: reducedMotion ? .2 : .9, ease:'power2.inOut',
+                 onComplete:()=>{ panel.hidden = true; }});
+  hotspotFoco.el?.focus({preventScroll:true});
+}
+panel.querySelector('.cerrar').addEventListener('click', cerrarPanel);
+
+/* ---------------------------------------------------------
+   9. LOOP DE DIBUJO
+--------------------------------------------------------- */
+let ultimaPose = {giro:0};
+const tmp = new THREE.Vector3(), tmpN = new THREE.Vector3(), aCam = new THREE.Vector3();
+let tPrev = performance.now();
+
+function cuadro(now){
+  requestAnimationFrame(cuadro);
+  const dt = Math.min(.05, (now - tPrev) / 1000); tPrev = now;
+
+  // pose base: scroll mezclado con el modo explorar
+  let p = mezclar(estado, poseExplorar(), modo.explorar);
+
+  // inercia del giro y, fuera de las secciones "libres", regreso suave a la pose
+  if(!arrastrando){
+    giroUsuario += velGiro * dt;
+    velGiro *= Math.exp(-dt * 3.5);
+    const regreso = 1 - p.libre;
+    if(regreso > 0){
+      const meta = Math.round(giroUsuario / TAU) * TAU;
+      giroUsuario += (meta - giroUsuario) * (1 - Math.exp(-dt * 2.2 * regreso));
+    }
+  }
+  p.giro += giroUsuario;
+  if(!reducedMotion) p.giro += p.vaiven * .28 * Math.sin(now / 1000 * .6);
+  if(poseFoco && modo.foco > 0) p = mezclar(p, poseFoco, modo.foco);
+  ultimaPose = p;
+
+  // tamaño de la pantalla en unidades de mundo, a la profundidad del tenis
+  const altoMundo = 2 * CAM_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const anchoMundo = altoMundo * camera.aspect;
+  const escala = p.tam * anchoMundo;
+  giroGrupo.rotation.y = p.giro;
+  inclinacion.rotation.set(p.incl, 0, p.ladeo);
+  inclinacion.scale.setScalar(escala);
+  inclinacion.position.set(0, 0, 0);
+  inclinacion.updateMatrixWorld(true);
+  // foco: desplaza el tenis para que el punto del hotspot quede donde iría su centro
+  const h = (poseFoco && modo.foco > .001) ? hotspotFoco : HOTSPOTS[0];
+  const pivote = p.foco > 0 ? giroGrupo.localToWorld(tmp.copy(h.p ?? V(h.punto))) : tmp.set(0, 0, 0);
+  inclinacion.position.set(p.x * anchoMundo - pivote.x * p.foco, p.y * altoMundo - pivote.y * p.foco, -pivote.z * p.foco);
+  inclinacion.updateMatrixWorld(true);
+
+  planoCorte.copy(planoCorteLocal).applyMatrix4(giroGrupo.matrixWorld);
+  if(sombra) sombra.material.opacity = p.sombra;
+
+  renderer.render(scene, camera);
+  moverHotspots(p);
+}
+
+function moverHotspots(p){
+  const w = innerWidth, hgt = innerHeight;
+  for(const h of HOTSPOTS){
+    if(!h.el) continue;
+    const pos = giroGrupo.localToWorld(tmp.copy(h.p));
+    const n = tmpN.copy(h.n).transformDirection(giroGrupo.matrixWorld);
+    const mira = n.dot(aCam.copy(camera.position).sub(pos).normalize());
+    const alfa = p.puntos * clamp((mira - .15) / .25, 0, 1);
+    pos.project(camera);
+    h.el.style.transform = `translate3d(${((pos.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pos.y) / 2 * hgt).toFixed(1)}px, 0)`;
+    h.el.style.opacity = alfa.toFixed(3);
+    h.el.classList.toggle('activo', alfa > .4);
+    h.el.tabIndex = alfa > .4 ? 0 : -1;
+  }
+}
+
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+});
+
+/* ---------------------------------------------------------
+   10. DEPURACIÓN (?debug): clic sobre el tenis → coordenadas para un hotspot nuevo
+--------------------------------------------------------- */
+const raycaster = new THREE.Raycaster();
+function depurarClic(e){
+  const ndc = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(mallas, false)[0];
+  if(!hit) return console.log('[debug] clic fuera del tenis');
+  const p = giroGrupo.worldToLocal(hit.point.clone());
+  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
+             .transformDirection(giroGrupo.matrixWorld.clone().invert());
+  const r = (v)=> v.toArray().map(x => +x.toFixed(4));
+  console.log(`[debug] punto: ${JSON.stringify(r(p))}, normal: ${JSON.stringify(r(n))}`);
+}
+if(DEBUG) window.tenisDebug = {estado, modo, HOTSPOTS, giroGrupo, camera, THREE, set giro(v){ giroUsuario = v; }};
+</script>
+</body>
+</html>

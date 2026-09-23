@@ -1,0 +1,5 @@
+# escaneos originales: 30 MB cada uno, se guardan fuera de git
+fuentes/originales/
+
+# configuración local de herramientas, no forma parte del proyecto
+.claude/
