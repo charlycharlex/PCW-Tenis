@@ -3,3 +3,6 @@ fuentes/originales/
 
 # configuración local de herramientas, no forma parte del proyecto
 .claude/
+
+# propuesta comercial (precios) y mockup: el repo es público, esto no se sube
+propuesta/

@@ -141,6 +141,8 @@
   #respaldo img{width:min(52vw,640px); height:auto;}
   html.sin3d #respaldo{display:flex;}
   html.sin3d #escena, html.sin3d #hotspots, html.sin3d [data-requiere-3d]{display:none !important;}
+  /* ?incrustado: la página vive dentro del sitio de la agencia, que ya trae su propia barra */
+  html.incrustado header.barra{display:none;}
 
   /* ---------- celular: el tenis arriba, el texto abajo ---------- */
   @media (max-width:767px){
@@ -180,7 +182,7 @@
 <!-- Cada <section> es una parada del recorrido. Su posición en la página decide cuándo el
      tenis llega a la pose correspondiente de PASOS (mismo orden). -->
 <main id="recorrido">
-  <section class="paso" data-lado="izq">
+  <section class="paso" id="portada" data-lado="izq">
     <div class="texto">
       <span class="etiqueta">Palmer Cooper Wallace</span>
       <h1>Cada proyecto termina con una <em>firma</em>.</h1>
@@ -192,7 +194,7 @@
     </div>
   </section>
 
-  <section class="paso" data-lado="der">
+  <section class="paso" id="ritual" data-lado="der">
     <div class="texto">
       <span class="etiqueta">01 — El ritual</span>
       <h2>Unos tenis, <em>muchas manos</em>.</h2>
@@ -204,7 +206,7 @@
     </div>
   </section>
 
-  <section class="paso" data-lado="izq" data-tono="oscuro">
+  <section class="paso" id="marcas" data-lado="izq" data-tono="oscuro">
     <div class="texto">
       <span class="etiqueta">02 — Las marcas</span>
       <h2>Busca las firmas <em>que pesan</em>.</h2>
@@ -212,7 +214,7 @@
     </div>
   </section>
 
-  <section class="paso" data-lado="centro">
+  <section class="paso" id="giralo" data-lado="centro">
     <div class="texto">
       <span class="etiqueta">03 — Gíralo</span>
       <h2>Míralo por <em>todos lados</em>.</h2>
@@ -222,7 +224,7 @@
     </div>
   </section>
 
-  <section class="paso" data-lado="centro">
+  <section class="paso" id="coleccion" data-lado="centro">
     <div class="texto">
       <span class="etiqueta">La colección</span>
       <h2>Y apenas es <em>el primero</em>.</h2>
@@ -258,6 +260,7 @@
 <!-- Si three.js o GSAP no llegan del CDN, el módulo nunca corre: este guardián lo detecta y deja
      la página como texto con una foto del tenis, en vez de un cargador girando para siempre. -->
 <script>
+  if(new URLSearchParams(location.search).has('incrustado')) document.documentElement.classList.add('incrustado');
   window.tenisSin3D = function(motivo){
     if(document.documentElement.classList.contains('sin3d')) return new Error(motivo);
     console.warn('[tenis] sin 3D:', motivo);
