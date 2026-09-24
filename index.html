@@ -21,7 +21,9 @@
     --texto:var(--tinta);
     --texto-suave:var(--tinta-suave);
   }
-  body.oscuro{
+  /* el tono oscuro se aplica solo al bloque de los tenis (y a su barra en la versión suelta),
+     nunca al <body>: dentro del sitio de la agencia no debe teñir el resto de su página */
+  .tono-oscuro{
     --fondo:var(--marino);
     --texto:#F3F2EF;
     --texto-suave:#A9AEBD;
@@ -29,17 +31,22 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html{background:var(--papel);}
-  body{background:var(--fondo); color:var(--texto); font-family:'Manrope',system-ui,sans-serif;
-       transition:background-color .7s ease, color .7s ease; -webkit-font-smoothing:antialiased;}
+  body{background:var(--papel); color:var(--tinta); font-family:'Manrope',system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
+  #tenis{position:relative; background:var(--fondo); color:var(--texto); transition:background-color .7s ease, color .7s ease;}
   /* mientras el panel de una marca o el modo explorar están abiertos, la página no hace scroll */
   html.bloqueado, html.bloqueado body{overflow:hidden;}
 
-  /* el lienzo va fijo detrás del texto: el scroll mueve la cámara, no el lienzo.
-     pan-y deja al navegador el scroll vertical en táctil y nos da el arrastre horizontal para girar */
-  #escena{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:1;
+  /* #tenis es una sección autocontenida: puede ser la página entera o ir dentro de otra más larga
+     (la landing de la agencia). El escenario (lienzo + hotspots) se queda pegado arriba mientras
+     se recorre la sección, y el texto pasa por encima: el scroll mueve la cámara, no el lienzo. */
+  .escenario{position:sticky; top:0; height:100vh; height:100svh; z-index:1;}
+  /* pan-y deja al navegador el scroll vertical en táctil y nos da el arrastre horizontal para girar */
+  #escena{position:absolute; inset:0; width:100%; height:100%; display:block;
           touch-action:pan-y; cursor:grab; outline:none;}
   #escena.arrastrando{cursor:grabbing;}
-  html.explorando #escena{z-index:30; touch-action:none;}
+  /* modo explorar: el lienzo pasa a pantalla completa sin sacar al escenario del flujo (no mueve el scroll) */
+  html.explorando .escenario{z-index:30;}
+  html.explorando #escena, html.explorando #hotspots{position:fixed; inset:0; touch-action:none;}
 
   header.barra{position:fixed; top:0; left:0; right:0; z-index:40; display:flex; align-items:center;
     justify-content:space-between; padding:20px clamp(16px,4vw,48px); pointer-events:none;}
@@ -59,8 +66,10 @@
 
   /* ---------- recorrido con scroll ---------- */
   /* las secciones no atrapan el puntero: así el arrastre sobre el tenis llega al lienzo */
-  main{position:relative; z-index:2; pointer-events:none; transition:opacity .4s ease;}
+  main{position:relative; z-index:2; pointer-events:none; transition:opacity .4s ease;
+       margin-top:-100vh; margin-top:-100svh;}
   html.explorando main, html.enfocado main{opacity:0;}
+  html.explorando main *, html.enfocado main *{pointer-events:none !important;}
   .paso{min-height:100vh; min-height:100svh; display:flex; align-items:center;
         padding:96px clamp(16px,6vw,96px);}
   .paso[data-lado="der"]{justify-content:flex-end;}
@@ -84,8 +93,7 @@
   .cifras span{font-size:13px; color:var(--texto-suave);}
 
   /* ---------- hotspots sobre las firmas ---------- */
-  #hotspots{position:fixed; inset:0; z-index:3; pointer-events:none;}
-  html.explorando #hotspots{z-index:31;}
+  #hotspots{position:absolute; inset:0; z-index:3; pointer-events:none;}
   /* el origen del botón es el punto 3D: un anillo hueco marca la firma sin taparla y la
      etiqueta queda arriba, unida por una línea guía */
   .hotspot{position:absolute; left:0; top:0; width:0; height:0; border:0; padding:0; background:none;
@@ -130,13 +138,13 @@
                       padding:8px 14px; border-radius:999px;}
 
   /* ---------- cargando / sin 3D ---------- */
-  #cargando{position:fixed; inset:0; z-index:60; background:var(--papel); display:flex; flex-direction:column;
+  #cargando{position:absolute; inset:0; z-index:5; background:var(--papel); display:flex; flex-direction:column;
             align-items:center; justify-content:center; gap:14px; transition:opacity .6s ease;}
   #cargando.oculto{opacity:0; pointer-events:none;}
   #cargando .barra-progreso{width:160px; height:3px; border-radius:3px; background:var(--linea); overflow:hidden;}
   #cargando .barra-progreso i{display:block; height:100%; width:0; background:var(--magenta); transition:width .2s ease;}
   #cargando span{font-size:13px; color:var(--tinta-suave); text-align:center; max-width:280px;}
-  #respaldo{display:none; position:fixed; inset:0; z-index:1; align-items:center; justify-content:flex-end;
+  #respaldo{display:none; position:absolute; inset:0; align-items:center; justify-content:flex-end;
             padding:0 4vw; pointer-events:none;}
   #respaldo img{width:min(52vw,640px); height:auto;}
   html.sin3d #respaldo{display:flex;}
@@ -165,22 +173,26 @@
 </head>
 <body>
 
-<div id="cargando" role="status" aria-live="polite">
-  <div class="barra-progreso"><i></i></div>
-  <span>Cargando los tenis…</span>
-</div>
-
-<canvas id="escena" tabindex="-1" aria-label="Tenis firmado en 3D. Arrastra para girarlo."></canvas>
-<div id="respaldo"><img alt="Tenis Nike Dunk High verde cubierto de firmas de clientes"></div>
-<div id="hotspots"></div>
-
 <header class="barra">
   <a class="marca" href="https://palmercooperwallace.com/">Palmer Cooper Wallace<small>Tenis firmados</small></a>
   <button class="boton fantasma" type="button" data-explorar data-requiere-3d>Explorar en 360°</button>
 </header>
 
+<!-- Todo lo de los tenis vive en #tenis: para montarlo en otra página se copia este bloque
+     (más #panel, #explorar-ui y los scripts). -->
+<div id="tenis">
+<div class="escenario">
+  <div id="cargando" role="status" aria-live="polite">
+    <div class="barra-progreso"><i></i></div>
+    <span>Cargando los tenis…</span>
+  </div>
+  <canvas id="escena" tabindex="-1" aria-label="Tenis firmado en 3D. Arrastra para girarlo."></canvas>
+  <div id="respaldo"><img alt="Tenis Nike Dunk High verde cubierto de firmas de clientes"></div>
+  <div id="hotspots"></div>
+</div>
+
 <!-- Cada <section> es una parada del recorrido. Su posición en la página decide cuándo el
-     tenis llega a la pose correspondiente de PASOS (mismo orden). -->
+     tenis llega a la pose correspondiente de poses() (mismo orden). -->
 <main id="recorrido">
   <section class="paso" id="portada" data-lado="izq">
     <div class="texto">
@@ -239,6 +251,7 @@
     </div>
   </section>
 </main>
+</div>
 
 <aside id="panel" role="dialog" aria-modal="false" aria-labelledby="panel-marca" hidden>
   <button class="cerrar" type="button" aria-label="Cerrar">✕</button>
@@ -362,7 +375,6 @@ try{
 }
 const pantallaChica = innerWidth <= 767;
 renderer.setPixelRatio(Math.min(devicePixelRatio, pantallaChica ? 1.5 : 2));
-renderer.setSize(innerWidth, innerHeight, false);
 renderer.localClippingEnabled = true;
 renderer.setClearColor(0x000000, 0);
 canvas.addEventListener('webglcontextlost', (e)=>{
@@ -372,7 +384,7 @@ canvas.addEventListener('webglcontextlost', (e)=>{
 
 const scene = new THREE.Scene();
 const CAM_DIST = 5;
-const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.05, 50);
+const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 50);
 camera.position.set(0, 0, CAM_DIST);
 
 // inclinación (hacia la cámara y de lado) > giro sobre su eje > el tenis centrado y normalizado
@@ -479,6 +491,7 @@ function construirRecorrido(celular){
                         scrub: reducedMotion ? true : .7, animation:tl});
 }
 
+const tonoOscuro = [document.getElementById('tenis'), document.querySelector('header.barra')].filter(Boolean);
 function arrancar(){
   const mm = gsap.matchMedia();
   mm.add('(max-width: 767px)', ()=> construirRecorrido(true));
@@ -490,7 +503,7 @@ function arrancar(){
       onToggle:(st)=> texto.classList.toggle('visible', st.isActive)});
     if(sec.dataset.tono === 'oscuro'){
       ScrollTrigger.create({trigger:sec, start:'top 55%', end:'bottom 45%',
-        onToggle:(st)=> document.body.classList.toggle('oscuro', st.isActive)});
+        onToggle:(st)=> tonoOscuro.forEach(el => el.classList.toggle('tono-oscuro', st.isActive))});
     }
   });
 
@@ -540,7 +553,7 @@ addEventListener('pointermove', (e)=>{
   const now = performance.now(), dt = Math.max(1, now - ultT);
   const dx = e.clientX - ultX, dy = e.clientY - ultY;
   if(Math.hypot(e.clientX - bajoX, e.clientY - bajoY) > 6) seMovio = true;
-  const sens = 7 / innerWidth;   // cruzar la pantalla ≈ una vuelta completa
+  const sens = 7 / canvas.clientWidth;   // cruzar el lienzo ≈ una vuelta completa
   giroUsuario += dx * sens;
   velGiro = dx * sens / dt * 1000;
   if(modo.explorar > .5) inclUsuario = clamp(inclUsuario + dy * sens * .6, -.35, 1.1);
@@ -681,7 +694,7 @@ function cuadro(now){
 }
 
 function moverHotspots(p){
-  const w = innerWidth, hgt = innerHeight;
+  const w = canvas.clientWidth, hgt = canvas.clientHeight;
   for(const h of HOTSPOTS){
     if(!h.el) continue;
     const pos = giroGrupo.localToWorld(tmp.copy(h.p));
@@ -696,18 +709,24 @@ function moverHotspots(p){
   }
 }
 
-addEventListener('resize', ()=>{
-  camera.aspect = innerWidth / innerHeight;
+// el lienzo mide lo que mida su escenario (la ventana, o la pantalla completa en modo explorar)
+function ajustarTamano(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w || !h) return;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight, false);
-});
+  renderer.setSize(w, h, false);
+}
+new ResizeObserver(ajustarTamano).observe(canvas);
+ajustarTamano();
 
 /* ---------------------------------------------------------
    10. DEPURACIÓN (?debug): clic sobre el tenis → coordenadas para un hotspot nuevo
 --------------------------------------------------------- */
 const raycaster = new THREE.Raycaster();
 function depurarClic(e){
-  const ndc = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  const caja = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2((e.clientX - caja.left) / caja.width * 2 - 1, -((e.clientY - caja.top) / caja.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hit = raycaster.intersectObjects(mallas, false)[0];
   if(!hit) return console.log('[debug] clic fuera del tenis');

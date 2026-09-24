@@ -38,6 +38,17 @@ Para verlo: servir la carpeta (`fetch` del `.glb` no funciona abriendo el archiv
 `?debug` en la URL: clic sobre el tenis → imprime en consola `punto` y `normal` para un hotspot
 nuevo (se pegan en `HOTSPOTS`). Las poses del scroll están en `poses()`; `giro 0` = talón a la cámara.
 
+**Dónde va a vivir:** la agencia lo quiere dentro de su landing, en la sección "Some of the brands
+that have trusted us..." (casi al final, antes de "The transformation begins here"). Por eso todo
+está en un bloque `#tenis` autocontenido: el escenario es `position: sticky` dentro de la sección y
+el tono oscuro se aplica a `#tenis`, nunca al `<body>`. Anclas por sección (`#marcas`, etc.) y
+`?incrustado` oculta la barra propia. GitHub Pages: https://charlycharlex.github.io/PCW-Tenis/
+
+**Propuesta comercial** en `propuesta/` (fuera de git: trae precios y el repo es público). Está
+publicada como artifact: https://claude.ai/artifact/NwxXanXRhwn5ScRawzjV2K — $4,000 MXN + una sesión
+de asesoría de marca, entrega 6 nov 2026. Equipo: Carlos Ortega Amarillas y Diego Alvarado Mendoza.
+`propuesta/generar_mockup.py` arma `mockup.html` (el `index.html` dentro de una réplica de su landing).
+
 ### Lo que se midió en el escaneo del tenis verde
 
 | | Original (`fuentes/originales/`) | Versión web (`modelos/tenis_verde_izq.glb`) |
