@@ -44,10 +44,12 @@ está en un bloque `#tenis` autocontenido: el escenario es `position: sticky` de
 el tono oscuro se aplica a `#tenis`, nunca al `<body>`. Anclas por sección (`#marcas`, etc.) y
 `?incrustado` oculta la barra propia. GitHub Pages: https://charlycharlex.github.io/PCW-Tenis/
 
-**Propuesta comercial** en `propuesta/` (fuera de git: trae precios y el repo es público). Está
-publicada como artifact: https://claude.ai/artifact/NwxXanXRhwn5ScRawzjV2K — $4,000 MXN + una sesión
-de asesoría de marca, entrega 6 nov 2026. Equipo: Carlos Ortega Amarillas y Diego Alvarado Mendoza.
-`propuesta/generar_mockup.py` arma `mockup.html` (el `index.html` dentro de una réplica de su landing).
+**Propuesta comercial** en `propuesta/`, fuera de git. Este repo es público: precios, ligas de la
+propuesta y condiciones con el cliente **no se escriben aquí** (tampoco en este archivo). Equipo:
+Carlos Ortega Amarillas y Diego Alvarado Mendoza.
+- `propuesta/propuesta.html` es la fuente; `propuesta/exportar_vercel.py` genera el sitio estático
+  en `..\PCW-Propuesta` (repo privado aparte, desplegado en Vercel).
+- `propuesta/generar_mockup.py` arma `mockup.html` (el `index.html` dentro de una réplica de su landing).
 
 ### Lo que se midió en el escaneo del tenis verde
 
