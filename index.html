@@ -109,6 +109,9 @@
   .firma-cita{margin-top:20px; font-family:'Permanent Marker','Manrope',cursive; font-size:clamp(20px,2vw,26px);
               line-height:1.3; color:var(--texto); transform:rotate(-1.5deg); transform-origin:left;}
   .firma-cita::before{content:'“';} .firma-cita::after{content:'”';}
+  /* la firma se escribe de izquierda a derecha cuando aparece su sección */
+  .paso .firma-cita{clip-path:inset(-20% 100% -20% -5%); transition:clip-path 1.2s cubic-bezier(.6,0,.25,1) .35s;}
+  .paso .texto.visible .firma-cita{clip-path:inset(-20% -5% -20% -5%);}
   .donde{margin-top:14px; font-size:13px; color:var(--texto-suave); letter-spacing:.02em;}
 
   /* ---------- hotspots sobre las firmas ---------- */
@@ -125,12 +128,15 @@
                           border:2px solid var(--magenta); animation:latido 1.8s ease-out infinite;}
   @keyframes latido{from{transform:scale(.8); opacity:.9;} to{transform:scale(2); opacity:0;}}
   .hotspot .guia{left:-1px; bottom:9px; width:2px; height:34px; background:var(--magenta);}
-  .hotspot .nombre{bottom:43px; left:0; transform:translateX(-50%); white-space:nowrap;
+  .hotspot .anillo{transform:scale(calc(.4 + .6 * var(--e, 1)));}
+  .hotspot .guia{transform-origin:bottom; transform:scaleY(var(--e, 1));}
+  .hotspot .nombre{bottom:43px; left:0; transform:translateX(-50%) translateY(calc(10px - 10px * var(--e, 1))) scale(calc(.75 + .25 * var(--e, 1))); white-space:nowrap;
                    background:var(--magenta); color:#fff; font-size:12px; font-weight:800; letter-spacing:.08em;
                    padding:7px 12px; border-radius:999px; box-shadow:0 6px 18px rgba(216,0,107,.35);
                    transition:transform .2s ease;}
   .hotspot .nombre::after{content:' +'; font-weight:600;}
   .hotspot:hover .nombre{transform:translateX(-50%) scale(1.06);}
+  .hotspot .nombre{transition:none;}
 
   /* ---------- panel de la marca ---------- */
   #panel{position:fixed; z-index:45; top:50%; right:clamp(16px,4vw,48px); width:min(380px,calc(100vw - 32px));
@@ -604,6 +610,7 @@ const paradas = secciones.map((s)=>({
   par: D.pares.find(p => p.id === s.dataset.par) || null,
   marca: s.dataset.marca ? marcaPorId.get(s.dataset.marca) : null,
 }));
+paradas.forEach((p, i)=>{ if(p.marca) p.marca.parada = i; });
 const BASE = {x:0, y:0, z:0, tam:.3, giro:0, incl:.16, ladeo:0, px:0, py:0, pz:0, foco:0, vis:0, vaiven:0, sombra:1};
 
 /* Dónde va cada tenis en cada parada.
@@ -625,9 +632,11 @@ function poseCruda(p, z, cel){
             giro: exterior(z) + (col ? -.4 : .4), incl: .28, vis: 1, sombra: .6};
   }
   if(z.ip !== ipActual){
-    // fuera de escena: los pares que vienen esperan a la derecha; los que ya pasaron salen por la izquierda
-    const dir = z.ip > ipActual ? 1 : -1;
-    return {...BASE, x: dir * 1.05, y: .05 * (z.lado === 'izq' ? 1 : -1), z: -.3, tam: .34, vis: 0};
+    // fuera de escena: los pares que vienen esperan abajo a la derecha (entran subiendo y girando);
+    // los que ya pasaron salen hacia arriba a la izquierda
+    return z.ip > ipActual
+      ? {...BASE, x: 1.0, y: -.45, z: -.45, tam: .3, incl: .7, ladeo: .35, vis: 0, entra: 1}
+      : {...BASE, x: -1.05, y: .35, z: -.45, tam: .3, incl: -.25, ladeo: -.3, vis: 0, sale: 1};
   }
   if(p.tipo === 'portada' || p.tipo === 'par'){
     // el par junto: el izquierdo adelante con la punta hacia el texto, el derecho atrás en espejo
@@ -648,7 +657,7 @@ function poseCruda(p, z, cel){
     return {...BASE, ...foco, x: .25 * espejo, y: -.03, tam: .62};
   }
   // el compañero espera fuera de cuadro, del lado contrario al texto
-  return {...BASE, x: (p.lado === 'der' ? -1 : 1) * 1.05, y: .1, z: -.3, tam: .34, giro: exterior(z), vis: 0};
+  return {...BASE, x: (p.lado === 'der' ? -1 : 1) * 1.05, y: -.2, z: -.4, tam: .32, incl: .5, ladeo: (p.lado === 'der' ? -1 : 1) * .3, vis: 0};
 }
 
 /* Las poses de un tenis en todo el recorrido. El giro avanza siempre en el mismo sentido (se le
@@ -660,25 +669,44 @@ function posesDe(z, cel){
   P.forEach((p, i)=>{
     if(p.vis) return;
     const sig = visibles.find(j => j > i), ant = [...visibles].reverse().find(j => j < i);
-    p.giro = sig !== undefined ? P[sig].giro - 1.6 : (ant !== undefined ? P[ant].giro + 1.6 : p.giro);
+    if(sig !== undefined && (p.entra || ant === undefined)) p.giro = P[sig].giro - TAU * .85;   // entra casi con una vuelta
+    else if(ant !== undefined) p.giro = P[ant].giro + TAU * .55;                                // sale con media vuelta
   });
   for(let i = 1; i < P.length; i++){
     const piso = P[i - 1].giro - .25;
     P[i].giro = piso + ((P[i].giro - piso) % TAU + TAU) % TAU;
+    // la firma llega girando: al menos media vuelta antes de quedar de frente
+    if(P[i].foco > 0 && P[i - 1].vis && P[i].giro - P[i - 1].giro < TAU * .5) P[i].giro += TAU;
   }
+  P.forEach(p => { delete p.entra; delete p.sale; });
   return P;
 }
 
+/* Entre dos paradas el tenis no va en línea recta: a medio camino se aleja un poco y se inclina
+   (un arco), y en las entradas y salidas de un par los dos tenis van desfasados, como en cascada. */
+function mitad(a, b, z){
+  if(!a.vis && b.vis) return mezclar(a, b, z.lado === 'der' ? .22 : .5);      // el derecho entra un poco después
+  if(a.vis && !b.vis) return mezclar(a, b, z.lado === 'izq' ? .78 : .5);      // el izquierdo sale primero
+  const m = mezclar(a, b, .5);
+  if(a.vis && b.vis){ m.z -= .16; m.y += .03; m.incl += .1; }
+  return m;
+}
+
 let paradaActual = 0;
+let lineaTiempo = null;     // su tiempo va de 0 a paradas-1: el número de parada, con decimales
 function construirRecorrido(cel){
-  const tl = gsap.timeline({defaults: {ease: 'power2.inOut', duration: 1}});
+  const tl = gsap.timeline();
   for(const z of zapatos){
     const P = posesDe(z, cel);
     Object.assign(z.estado, P[0]);
-    for(let i = 1; i < P.length; i++) tl.to(z.estado, P[i], i - 1);
+    for(let i = 1; i < P.length; i++){
+      tl.to(z.estado, {...mitad(P[i - 1], P[i], z), duration: .5, ease: 'sine.in'}, i - 1);
+      tl.to(z.estado, {...P[i], duration: .5, ease: 'power2.out'}, i - .5);
+    }
   }
+  lineaTiempo = tl;
   ScrollTrigger.create({trigger: '#recorrido', start: 'top top', end: 'bottom bottom',
-    scrub: reducedMotion ? true : .8, animation: tl,
+    scrub: reducedMotion ? true : .9, animation: tl,
     onUpdate: (st)=>{ paradaActual = Math.round(st.progress * (paradas.length - 1)); }});
 }
 
@@ -701,6 +729,7 @@ function arrancar(){
   crearHotspots();
   requestAnimationFrame(cuadro);
   cargando.classList.add('oculto');
+  if(!reducedMotion && scrollY < innerHeight * .5) gsap.fromTo(modo, {intro: 0}, {intro: 1, duration: 2.2, ease: 'power3.out', delay: .15});
   window.tenis3D = true;
 }
 
@@ -810,7 +839,7 @@ function tocar(e){
 /* ---------------------------------------------------------
    7. MODO EXPLORAR: un tenis a la vez, centrado, con todas sus firmas
 --------------------------------------------------------- */
-const modo = {explorar: 0, foco: 0};
+const modo = {explorar: 0, foco: 0, intro: 1};
 let explorarId = zapatos[0].id;
 const expNombre = document.querySelector('.exp-nombre');
 function elegirExplorar(id, animar = true){
@@ -947,6 +976,11 @@ function cuadro(now){
     p.giro += z.giroU;
     if(!reducedMotion) p.giro += p.vaiven * .22 * Math.sin(now / 1000 * .6 + z.ip * 1.7 + (z.lado === 'der' ? 2 : 0));
     if(poseFoco && modo.foco > 0 && marcaFoco?.z === z) p = mezclar(p, poseFoco, modo.foco);
+    if(modo.intro < 1 && z.ip === 0){
+      // al cargar, el par de la portada sube girando; el derecho un instante después
+      const t = clamp((modo.intro - (z.lado === 'der' ? .12 : 0)) / .88, 0, 1);
+      p = mezclar({...p, giro: p.giro - TAU * .9, y: p.y - .55, z: p.z - .4, incl: p.incl + .6, ladeo: p.ladeo + .3}, p, t);
+    }
     z.pose = p;
 
     z.grupo.visible = p.vis > .002 && Math.abs(p.x) < 1.6;
@@ -975,7 +1009,8 @@ function moverHotspots(dt){
     if(!m.el) continue;
     const z = m.z;
     // qué firmas se marcan: la de la parada; en explorar, todas las del tenis elegido
-    let quiero = modo.explorar > .5 ? (z.id === explorarId ? 1 : 0) : (actual?.marca === m ? 1 : 0);
+    const enParada = lineaTiempo ? clamp(1 - Math.abs(lineaTiempo.time() - m.parada) * 3.2, 0, 1) : (actual?.marca === m ? 1 : 0);
+    let quiero = modo.explorar > .5 ? (z.id === explorarId ? 1 : 0) : enParada;
     if(panelAbierto || !z.listo || !z.grupo.visible) quiero = 0;
     m.peso += (quiero - m.peso) * (1 - Math.exp(-dt * 6));
     if(m.peso < .01){ if(m.el.style.opacity !== '0'){ m.el.style.opacity = '0'; m.el.classList.remove('activo'); m.el.tabIndex = -1; } continue; }
@@ -986,6 +1021,7 @@ function moverHotspots(dt){
     pos.project(camera);
     m.el.style.transform = `translate3d(${((pos.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pos.y) / 2 * hgt).toFixed(1)}px, 0)`;
     m.el.style.opacity = alfa.toFixed(3);
+    m.el.style.setProperty('--e', alfa.toFixed(3));
     m.el.classList.toggle('activo', alfa > .4);
     m.el.tabIndex = alfa > .4 ? 0 : -1;
   }
