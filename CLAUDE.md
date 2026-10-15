@@ -15,28 +15,41 @@ Precedente propio: la landing de EzEat (`C:\Users\charl\Documents\Landingezeat`)
 mismo stack (three.js + GSAP + Draco, un solo `index.html` sin compilación, pellizco en celular,
 fallback si no hay WebGL). Reusar sus patrones.
 
-## Estado actual (2026-09-23)
+## Estado actual (2026-10-14)
 
-**Prototipo con el tenis verde listo** (paso 1 del plan): `index.html`, falta enseñarlo a la agencia.
+**Desarrollo con los 8 tenis listo** (pares verde, rosa, azul y negro). Falta: el par plateado
+(lo están terminando en Blender), los datos de cada ficha (proyecto, año, texto) y probar en
+celulares reales.
 
-- Recorrido de 5 secciones con scroll (GSAP ScrollTrigger interpolando poses del tenis): portada →
-  el ritual → las marcas (acercamiento a KRUPS, fondo marino) → gíralo → cierre.
-- Giro: en el recorrido, arrastre **horizontal** (en táctil el vertical sigue siendo scroll,
-  `touch-action: pan-y`) y el tenis regresa solo a su pose; en la sección "Gíralo" el giro se queda.
-  "Explorar en 360°" abre un modo aparte: giro en dos ejes, pellizco/rueda para acercar, scroll bloqueado.
-  Se implementaron **las dos** opciones de la limitación 3 para que la agencia elija.
-- Un hotspot (KRUPS): anillo + etiqueta; al tocarlo la cámara se acerca a la firma y abre un panel
-  con datos **de ejemplo** (proyecto y año inventados, marcado en el propio panel).
-- Colores y tipografía (Manrope) tomados de palmercooperwallace.com. Textos provisionales.
-- Sin WebGL / sin CDN / error de carga → foto fija (`modelos/tenis_verde_izq.webp`) y el texto completo.
-- Probado en el navegador de Claude a 800, 1440 y 375 px. **No probado en celulares reales.**
+- Los escaneos llegaron limpios y con suela reconstruida en `.blend` (zip "INVIS PROYECT"):
+  extraídos en `fuentes/originales/blend/`, y las fotos de firmas en `fuentes/originales/firmas/`
+  (todo fuera de git). Se convierten con `fuentes/exportar_tenis.py` (ver Herramientas).
+- El recorrido se genera desde el bloque JSON `#datos-tenis` de `index.html`: portada (par 1) →
+  por cada par, una parada de presentación + una por cada firma de marca → colección. Agregar un
+  par o una firma es editar ese JSON; las secciones, las poses y los hotspots salen solos.
+- Firmas destacadas (confirmadas por el equipo): Nescafé Dolce Gusto ("NDG powered by KRUPS",
+  verde izq.), "…a la BATALLA" (verde izq.; falta el nombre de la marca), Mondelēz (verde der.),
+  Bimbo y Lyncott (rosa der.), Gentera (azul izq.), Elemental (azul der.), Tec de Monterrey
+  (negro der.). El negro izquierdo no tiene firma destacada. Del plateado: Coca-Cola, Heineken, Sanfer.
+- Interacción: el arrastre horizontal gira el tenis que está bajo el dedo (regresa solo).
+  "Explorar en 360°" muestra un tenis a la vez, con flechas, giro en 2 ejes y pellizco/rueda. En la
+  colección, tocar un tenis lo abre. La ficha de marca acerca la cámara a la firma.
+- Carga: el par de la portada decide cuándo se quita el cargador; los demás entran en segundo
+  plano. La textura es 1K/2K/4K según el largo del tenis en píxeles (4K solo en escritorio): `nivelDeseado()`.
+- Sin WebGL → rejilla con las 8 fotos fijas (`modelos/poster/`) y todo el texto.
+- Probado con Chrome headless (escritorio 1440 y celular 390). **No probado en celulares reales.**
 
 Para verlo: servir la carpeta (`fetch` del `.glb` no funciona abriendo el archivo directo):
 ```
 "C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe" -m http.server 8123
 ```
-`?debug` en la URL: clic sobre el tenis → imprime en consola `punto` y `normal` para un hotspot
-nuevo (se pegan en `HOTSPOTS`). Las poses del scroll están en `poses()`; `giro 0` = talón a la cámara.
+`?debug` en la URL: en Explorar, clic sobre una firma → imprime `punto` y `normal` para el JSON.
+También `tenisDebug.vista(id, giro, incl, zoom)` y `tenisDebug.puntoEn(x, y)`.
+Convención: la punta de todos los tenis va hacia +Z (giro 0 = punta a la cámara); el costado
+exterior del derecho es -X (giro +π/2) y el del izquierdo +X (giro -π/2).
+Para revisar el recorrido conviene Chrome headless por CDP (el panel del navegador de Claude
+captura a medio cuadro). Ojo: no poner `overflow:hidden` en el `<body>` para bloquear el scroll,
+porque rompe el `sticky` del escenario.
 
 **Dónde va a vivir:** la agencia lo quiere dentro de su landing, en la sección "Some of the brands
 that have trusted us..." (casi al final, antes de "The transformation begins here"). Por eso todo
@@ -112,19 +125,26 @@ viene definido). El cuello de botella suele ser diseño y escaneos, no código.
 
 - **Blender 5.2**: `C:\Program Files\Blender Foundation\Blender 5.2\blender.exe` — importa `.usdz`.
 - `python` y `node` **no** están en el PATH; para procesar modelos usar el Python de Blender.
-- `fuentes/optimizar_tenis.py` — convierte un `.usdz` en `.glb` con Draco:
+- `fuentes/exportar_tenis.py` — **el que se usa**: convierte un `.blend` terminado (escaneo + suela)
+  en `modelos/<id>.glb` (Draco; escaneo a 100k triángulos, suela a 24k con su color horneado en los
+  vértices) y `modelos/tex/<id>_1k|2k|4k.jpg`. `--girar` si la punta no viene hacia -Y de Blender.
+  ```
+  "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P fuentes\exportar_tenis.py -- fuentes\originales\blend\tenis_azul_derecho.blend azul_der [--girar]
+  ```
+  `fuentes/revisar_glb.py <id> <salida.jpg>` dibuja 4 vistas tal como las verá la página.
+- `fuentes/optimizar_tenis.py` — (del prototipo) convierte un `.usdz` crudo en `.glb` con Draco:
   ```
   "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P fuentes\optimizar_tenis.py -- fuentes\originales\X.usdz modelos\x.glb [triangulos=80000] [textura=2048] [--renders]
   ```
   Limpia los restos de la base y omite el normal map (`--con-normal` lo conserva). Aún no comprime
   a KTX2. Si un tenis tiene suela blanca, la limpieza por color la borraría: poner `BASE_SATURACION = 0`.
-- `fuentes/poster_tenis.py` — imagen fija `.webp` para el respaldo sin WebGL:
-  `blender.exe -b --factory-startup -P fuentes\poster_tenis.py -- modelos\x.glb modelos\x.webp [giro_grados]`
+- `fuentes/poster_tenis.py <id>` — foto fija del costado exterior: `modelos/poster/<id>.webp` (respaldo
+  sin WebGL) y `entregables/renders/<id>.png` de 2800 px (entregable; fuera de git por su peso).
 
 ## Estructura
 
 - `index.html` — la página (un solo archivo; three.js 0.170 por importmap + GSAP 3.12 de CDN).
 - `fuentes/originales/` — escaneos `.usdz` originales (30 MB c/u, fuera de git).
 - `fuentes/` — scripts de Blender.
-- `modelos/` — `.glb` optimizados que usa la página y su póster `.webp`.
+- `modelos/` — `<id>.glb`, `tex/` (texturas del escaneo en 3 tamaños) y `poster/` (fotos fijas `.webp`).
 - `referencias/renders/` — renders de comparación original vs. reducido.

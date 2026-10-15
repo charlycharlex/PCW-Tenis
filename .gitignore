@@ -6,3 +6,6 @@ fuentes/originales/
 
 # propuesta comercial (precios) y mockup: el repo es público, esto no se sube
 propuesta/
+
+# entregables pesados (renders HD): se entregan aparte
+entregables/
