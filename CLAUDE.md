@@ -27,9 +27,9 @@ celulares reales.
 - El recorrido se genera desde el bloque JSON `#datos-tenis` de `index.html`: portada (par 1) →
   por cada par, una parada de presentación + una por cada firma de marca → colección. Agregar un
   par o una firma es editar ese JSON; las secciones, las poses y los hotspots salen solos.
-- Firmas destacadas (confirmadas por el equipo): Nescafé Dolce Gusto ("NDG powered by KRUPS",
-  verde izq.), "…a la BATALLA" (verde izq.; falta el nombre de la marca), Mondelēz (verde der.),
-  Bimbo y Lyncott (rosa der.), Gentera (azul izq.), Elemental (azul der.), Tec de Monterrey
+- Firmas destacadas (11, confirmadas por el equipo): Nescafé Dolce Gusto ("NDG powered by KRUPS",
+  verde izq.), Lucha Libre ("…a la BATALLA", verde izq.), Mondelēz y Santa Clara ("libres y gloriosos", verde der.),
+  Bimbo, Lyncott y Tequila Altos ("AAAAAALTOS!!", rosa der.), Gentera y UP (azul izq.), Elemental (azul der.), Tec de Monterrey
   (negro der.). El negro izquierdo no tiene firma destacada. Del plateado: Coca-Cola, Heineken, Sanfer.
 - Interacción: el arrastre horizontal gira el tenis que está bajo el dedo (regresa solo).
   "Explorar en 360°" muestra un tenis a la vez, con flechas, giro en 2 ejes y pellizco/rueda. En la
