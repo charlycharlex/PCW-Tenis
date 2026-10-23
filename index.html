@@ -1163,6 +1163,7 @@ function entrarExplorar(id){
   cerrarPanel();
   const p = paradas[paradaActual];
   elegirExplorar(typeof id === 'string' ? id : (p?.marca?.z.id || (p?.par ? p.par.tenis[0] : zapatos[0].id)), false);
+  avisar('explorar', {tenis: explorarId});
   html.classList.add('explorando', 'bloqueado');
   gsap.to(modo, {explorar: 1, duration: reducedMotion ? .2 : 1, ease: 'power2.inOut'});
   document.getElementById('salir-explorar').focus({preventScroll: true});
@@ -1225,8 +1226,17 @@ function crearHotspots(){
     m.el = b;
   }
 }
+/* Medición (opcional): abrir una ficha o el modo explorar se avisa como evento del documento
+   ('tenis:ficha', 'tenis:explorar') y, si la página tiene Google Tag Manager o GA4 (window.dataLayer),
+   también ahí ('tenis_ficha', 'tenis_explorar'). Así la agencia puede ver qué marcas se abren más sin
+   tocar este código. Por su cuenta no manda nada a ningún lado. */
+function avisar(nombre, datos){
+  document.dispatchEvent(new CustomEvent('tenis:' + nombre, {detail: datos}));
+  window.dataLayer?.push({event: 'tenis_' + nombre, ...datos});
+}
 function abrirPanel(m){
   if(!m) return;
+  avisar('ficha', {marca: m.id, nombre: m.marca, tenis: m.z.id});
   marcaFoco = m;
   panel.querySelector('#panel-marca').textContent = m.marca;
   panel.querySelector('[data-campo="firma"]').textContent = m.firma || '';
