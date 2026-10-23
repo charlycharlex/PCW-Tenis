@@ -11,7 +11,9 @@
      fuentes. Precarga de lo que necesita el primer par, para que no espere a que el script lo pida.
      SOLO en la página suelta: dentro de la landing de la agencia NO copiar estos <link>, porque ahí la
      sección no baja nada hasta que el visitante se acerca (sección 3 del script). Si cambia el primer
-     par en los datos, cambiar aquí los .glb y .ktx2. -->
+     par en los datos, cambiar aquí los .glb y .ktx2. La 2K solo se precarga donde seguro se va a usar:
+     en la portada el tenis mide .34 del ancho y pide 2K arriba de 520 px reales (UMBRAL, sección 4),
+     o sea ancho × densidad ≳ 1530 px más la barra de scroll. En una pantalla de 1366 px no se usaría. -->
 <!-- El importmap va antes de cualquier modulepreload: en cuanto el navegador empieza a bajar un módulo
      ya no acepta mapas, y "three" no se podría resolver. -->
 <script type="importmap">
@@ -38,8 +40,8 @@
 <link rel="preload" as="fetch" crossorigin href="modelos/verde_der.glb">
 <link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_izq_1k.ktx2">
 <link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_der_1k.ktx2">
-<link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_izq_2k.ktx2" media="(min-width: 768px)" fetchpriority="low">
-<link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_der_2k.ktx2" media="(min-width: 768px)" fetchpriority="low">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_izq_2k.ktx2" media="(min-width: 1560px), (min-width: 1250px) and (min-resolution: 1.25dppx), (min-width: 1040px) and (min-resolution: 1.5dppx), (min-width: 780px) and (min-resolution: 2dppx)" fetchpriority="low">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/verde_der_2k.ktx2" media="(min-width: 1560px), (min-width: 1250px) and (min-resolution: 1.25dppx), (min-width: 1040px) and (min-resolution: 1.5dppx), (min-width: 780px) and (min-resolution: 2dppx)" fetchpriority="low">
 <style>
   /* Fuentes propias (antes del CSS de Google Fonts, que bloqueaba el primer pintado). Manrope es
      variable: un solo archivo por subconjunto para todos los pesos. latin-ext solo se baja si hace falta
