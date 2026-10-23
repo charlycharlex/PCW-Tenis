@@ -576,15 +576,30 @@ const gltfLoader = new GLTFLoader().setDRACOLoader(draco);
    criterio que GLTFLoader). */
 const ua = navigator.userAgent;
 const ffVersion = +(/Firefox\/(\d+)/.exec(ua)?.[1] ?? 0);
-const bitmapLoader = (typeof createImageBitmap !== 'undefined' && !/^((?!chrome|android).)*safari/i.test(ua)
-                      && !(ffVersion && ffVersion < 98))
+const esSafari = /^((?!chrome|android).)*safari/i.test(ua);
+const bitmapLoader = (typeof createImageBitmap !== 'undefined' && !esSafari && !(ffVersion && ffVersion < 98))
   ? new THREE.ImageBitmapLoader().setOptions({imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none'})
   : null;
+/* Safari también: three lo excluye por las opciones, pero sin opciones funciona igual con estos JPEG
+   (sin orientación EXIF ni perfil de color). Probado en WebKit (Safari 27): misma imagen píxel por
+   píxel que con <img>, y subir una 2K baja de 19 a 6 ms porque ya no decodifica en el hilo principal.
+   Si algo falla, sigue el cargador de siempre. */
+const bitmapSafari = esSafari && typeof createImageBitmap !== 'undefined';
 const texLoader = new THREE.TextureLoader();
+async function decodificar(url){
+  if(bitmapLoader) return bitmapLoader.loadAsync(url);
+  if(bitmapSafari){
+    try{
+      const r = await fetch(url);
+      if(r.ok) return await createImageBitmap(await r.blob());
+    }catch(err){ /* al cargador de siempre */ }
+  }
+  return null;
+}
 async function imagen(url, esColor){
   let t;
-  if(bitmapLoader){
-    const bmp = await bitmapLoader.loadAsync(url);
+  const bmp = await decodificar(url);
+  if(bmp){
     t = new THREE.Texture(bmp);
     t.needsUpdate = true;
     // ya en la GPU, la copia decodificada en memoria normal sobra (un 4K son 64 MB)
