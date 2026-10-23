@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Palmer Cooper Wallace — Tenis firmados</title>
 <meta name="description" content="Cada proyecto que terminamos, el cliente nos lo firma en unos tenis. Gíralos en 3D y encuentra las marcas con las que hemos trabajado.">
+<link rel="icon" href="data:,"><!-- sin ícono propio: evita que el navegador pida /favicon.ico (404) -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -138,8 +140,11 @@
   .hotspot > *{position:absolute; pointer-events:none;}
   .hotspot .anillo{left:-9px; top:-9px; width:18px; height:18px; border-radius:50%;
                    border:2.5px solid var(--magenta); box-shadow:0 0 0 2px rgba(255,255,255,.8);}
+  /* el latido solo corre en la etiqueta visible: una animación infinita en las 14 (aun invisibles)
+     tenía al navegador recalculando estilos 60 veces por segundo con la página quieta */
   .hotspot .anillo::after{content:''; position:absolute; inset:-5px; border-radius:50%;
-                          border:2px solid var(--magenta); animation:latido 1.8s ease-out infinite;}
+                          border:2px solid var(--magenta); opacity:0;}
+  .hotspot.activo .anillo::after{animation:latido 1.8s ease-out infinite;}
   @keyframes latido{from{transform:scale(.8); opacity:.9;} to{transform:scale(2); opacity:0;}}
   .hotspot .guia{left:-1px; bottom:9px; width:2px; height:34px; background:var(--magenta);}
   .hotspot .anillo{transform:scale(calc(.4 + .6 * var(--e, 1)));}
@@ -554,7 +559,8 @@ const frente = (m)=> Math.atan2(-m.n.x, m.n.z);
 const inclFrente = (m)=> Math.max(.02, Math.atan2(m.n.y, Math.hypot(m.n.x, m.n.z)));
 const cercano = (angulo, a)=> angulo + Math.round((a - angulo) / TAU) * TAU;
 const lerp = THREE.MathUtils.lerp, clamp = THREE.MathUtils.clamp;
-function mezclar(a, b, t){ const r = {}; for(const k in BASE) r[k] = lerp(a[k] ?? BASE[k], b[k] ?? a[k] ?? BASE[k], t); return r; }
+// r: objeto donde escribir (el loop de dibujo reusa uno por tenis para no crear basura en cada cuadro)
+function mezclar(a, b, t, r = {}){ for(const k in BASE) r[k] = lerp(a[k] ?? BASE[k], b[k] ?? a[k] ?? BASE[k], t); return r; }
 
 /* ---------------------------------------------------------
    3. CARGA: primero el par de la portada; los demás en segundo plano, en orden
@@ -1215,7 +1221,7 @@ function cuadro(now){
   for(const z of zapatos){
     if(!z.listo) continue;
     // pose del scroll mezclada con el modo explorar
-    let p = mezclar(z.estado, modo.explorar > 0 ? poseExplorar(z) : z.estado, modo.explorar);
+    let p = mezclar(z.estado, modo.explorar > 0 ? poseExplorar(z) : z.estado, modo.explorar, z.poseBuf ??= {});
     // inercia del giro con el dedo y regreso suave a la pose (en explorar el giro se queda)
     if(arrastrando !== z){
       z.giroU += z.velU * dt;
@@ -1282,19 +1288,23 @@ function moverHotspots(dt){
     if(panelAbierto || !z.listo || !z.grupo.visible) quiero = 0;
     m.peso += (quiero - m.peso) * (1 - Math.exp(-dt * 6));
     if(Math.abs(quiero - m.peso) > .002) moviendo = true;
-    if(m.peso < .01){ if(m.el.style.opacity !== '0'){ m.el.style.opacity = '0'; m.el.classList.remove('activo'); m.el.tabIndex = -1; } continue; }
+    // al DOM solo lo que cambió: cada escritura de estilo (y más la variable --e, que heredan sus
+    // hijos) obliga a recalcular estilos
+    if(m.peso < .01){ escribirHotspot(m, null, '0', false); continue; }
     const pos = z.giroGrupo.localToWorld(tmp.copy(m.p));
     const n = tmpN.copy(m.n).transformDirection(z.giroGrupo.matrixWorld);
     const mira = n.dot(aCam.copy(camera.position).sub(pos).normalize());
     const alfa = m.peso * clamp((mira - .12) / .25, 0, 1);
     pos.project(camera);
-    m.el.style.transform = `translate3d(${((pos.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pos.y) / 2 * hgt).toFixed(1)}px, 0)`;
-    m.el.style.opacity = alfa.toFixed(3);
-    m.el.style.setProperty('--e', alfa.toFixed(3));
-    m.el.classList.toggle('activo', alfa > .4);
-    m.el.tabIndex = alfa > .4 ? 0 : -1;
+    escribirHotspot(m, `translate3d(${((pos.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pos.y) / 2 * hgt).toFixed(1)}px, 0)`,
+                    alfa.toFixed(2), alfa > .4);
   }
   return moviendo;
+}
+function escribirHotspot(m, transform, alfa, activo){
+  if(transform && transform !== m.ultTransform){ m.el.style.transform = m.ultTransform = transform; }
+  if(alfa !== m.ultAlfa){ m.el.style.opacity = m.ultAlfa = alfa; m.el.style.setProperty('--e', alfa); }
+  if(activo !== m.activo){ m.activo = activo; m.el.classList.toggle('activo', activo); m.el.tabIndex = activo ? 0 : -1; }
 }
 
 // el lienzo mide lo que mida su escenario (la ventana, o la pantalla completa en modo explorar)
