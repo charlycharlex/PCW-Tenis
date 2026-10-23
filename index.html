@@ -571,16 +571,34 @@ async function imagen(url, esColor){
 }
 
 /* Las texturas de un tenis por capa y nivel: '' es la del escaneo y '_firmas' la de la suela con
-   firmas (solo el plateado izquierdo). Se guarda la promesa: si dos partes piden la misma a la vez,
-   se baja una sola vez. */
+   firmas (solo el plateado izquierdo). Cada una es una entrada de caché que pasa por: pedida (bajando y
+   decodificando, fuera del hilo principal) → lista (decodificada, en RAM) → subida (en la GPU). Subir es
+   lo único caro para la página y se decide en revisarTexturas() (sección 4). */
+const LADO = {'1k': 1024, '2k': 2048, '4k': 4096};
 function textura(z, nivel, capa = ''){
   const k = capa + nivel;
-  z.tex[k] ??= imagen(`${RUTA}tex/${z.id}${capa}_${nivel}.jpg`, true).catch((err)=>{ delete z.tex[k]; throw err; });
-  return z.tex[k];
+  let e = z.tex[k];
+  if(!e){
+    const ancho = LADO[nivel], alto = capa ? ancho / 4 : ancho;   // el atlas de firmas es 4:1
+    e = z.tex[k] = {nivel, capa, t: null, subida: false, usada: performance.now(),
+                    bytes: ancho * alto * 4 * 4 / 3};               // RGBA + mipmaps
+    e.promesa = imagen(`${RUTA}tex/${z.id}${capa}_${nivel}.jpg`, true).then((t)=>{
+      if(z.tex[k] !== e){ desechar(t); throw new Error('ya no se necesita'); }
+      e.t = t;
+      return e;
+    });
+    e.promesa.catch(()=>{ if(z.tex[k] === e && !e.t) delete z.tex[k]; });
+  }
+  return e;
 }
-function soltarTextura(z, k){
-  z.tex[k]?.then(t => t.dispose(), ()=>{});
-  delete z.tex[k];
+function subir(e){
+  if(e.subida) return;
+  renderer.initTexture(e.t);
+  e.subida = true;
+}
+function desechar(t){
+  t.dispose();
+  t.image?.close?.();      // un ImageBitmap que no llegó a subirse sigue ocupando RAM
 }
 
 // una sola textura y una sola geometría para las 10 sombras (cada una lleva su material por la opacidad)
@@ -625,12 +643,16 @@ function entorno(){
   entornoCromo.colorSpace = THREE.SRGBColorSpace;
   return entornoCromo;
 }
+// nivel: con el que aparece (el par de la portada en escritorio ya entra en 2K). La de 1K se carga
+// siempre, aunque no se use al principio: es la de respaldo cuando hay que liberar memoria.
 async function cargarZapato(z, nivel, alProgreso){
-  const [gltf, tex, metal] = await Promise.all([
+  const niveles = nivel === '1k' ? ['1k'] : ['1k', nivel];
+  const [gltf, metal] = await Promise.all([
     gltfLoader.loadAsync(`${RUTA}${z.id}.glb`, alProgreso),
-    textura(z, nivel),
     z.par.cromo ? imagen(`${RUTA}tex/${z.id}_metal.jpg`, false).catch(()=> null) : null,
+    ...niveles.map(n => textura(z, n).promesa),
   ]);
+  const tex = z.tex[nivel].t;
   const modelo = gltf.scene;
   const caja = new THREE.Box3().setFromObject(modelo);
   const tam = caja.getSize(new THREE.Vector3()), centro = caja.getCenter(new THREE.Vector3());
@@ -658,14 +680,19 @@ async function cargarZapato(z, nivel, alProgreso){
     }
     z.mallas.push(o);
   });
-  for(const c of z.capas){
-    if(c.capa) c.mat.map = await textura(z, nivel, c.capa);
-    renderer.initTexture(c.mat.map);
+  for(const c of z.capas) for(const n of niveles){
+    const e = c.capa ? await textura(z, n, c.capa).promesa : z.tex[n];
+    subir(e);
+    if(n === nivel) c.mat.map = e.t;
   }
   if(metal) renderer.initTexture(metal);
   z.giroGrupo.add(modelo);
   z.sombra = crearSombra(z.alto);
   z.giroGrupo.add(z.sombra);
+  // Compilar sus shaders ya, no la primera vez que aparece: el cromo y la suela con firmas del
+  // plateado tienen programas propios y compilarlos a media animación costaba ~175 ms (Radeon, D3D11).
+  // compileAsync usa KHR_parallel_shader_compile donde existe: no bloquea mientras compila.
+  try{ await renderer.compileAsync(z.giroGrupo, camera, scene); }catch(err){ renderer.compile(z.giroGrupo, camera, scene); }
   z.nivel = nivel;
   z.listo = true;
   pedirDibujo();
@@ -673,39 +700,83 @@ async function cargarZapato(z, nivel, alProgreso){
 
 /* ---------------------------------------------------------
    4. TEXTURA SEGÚN EL TAMAÑO EN PANTALLA
-   1K cuando el tenis se ve chico, 2K cuando ocupa buena parte, 4K de cerca (solo escritorio).
-   Así nunca hay más de un par de texturas grandes en memoria: en celular es lo que decide si
-   la pestaña sobrevive.
+   1K cuando el tenis se ve chico, 2K cuando ocupa buena parte, 4K solo de cerca (ficha abierta o
+   modo explorar, y solo en escritorio).
+
+   Subir una textura a la GPU congela la página mientras dura, y no se puede partir. Medido en una
+   laptop con Radeon integrada (Chrome, D3D11): 1K ≈ 5 ms, 2K ≈ 15–60 ms, 4K ≈ 100–280 ms; en Safari
+   (decodifica al subir) unas 2.5 veces más. Por eso:
+   - bajar y decodificar empieza en cuanto se quiere un nivel (eso no toca el hilo principal), pero
+     SUBIR solo se hace con la escena quieta (sin scroll, arrastre ni poses moviéndose; el vaivén no
+     cuenta) y de una en una;
+   - bajar de nivel nunca hace falta para verse bien: las grandes se quedan en la GPU mientras quepan
+     en un presupuesto, y se suelta primero la que lleva más tiempo sin usarse. Así regresar con el
+     scroll no vuelve a subir nada;
+   - la de 1K de cada tenis se sube al cargar y no se suelta nunca: es la de respaldo.
 --------------------------------------------------------- */
 const UMBRAL = {'2k': 520, '4k': 1500};   // largo del tenis en píxeles reales de pantalla
+const ORDEN = {'1k': 0, '2k': 1, '4k': 2};
+const QUIETO_MS = 250;
+const PRESUPUESTO = PERMITE_4K ? 160e6 : 50e6;   // bytes de texturas 2K/4K en la GPU (≈ una 4K + tres 2K)
+let quietoDesde = 0;                              // lo actualiza el loop de dibujo (sección 9)
 function nivelDeseado(z){
-  const largo = (z.pose?.tam ?? 0) * renderer.domElement.width;
   const visible = z.grupo.visible && (z.pose?.vis ?? 0) > .2;
   if(!visible) return '1k';
-  const histeresis = (n)=> z.nivel === n ? .75 : 1;
-  if(PERMITE_4K && largo > UMBRAL['4k'] * histeresis('4k')) return '4k';
+  const largo = (z.pose?.tam ?? 0) * renderer.domElement.width;
+  const deCerca = (modo.foco > .99 && marcaFoco?.z === z) || (modo.explorar > .99 && z.id === explorarId);
+  if(PERMITE_4K && deCerca && largo > UMBRAL['4k'] * (z.nivel === '4k' ? .75 : 1)) return '4k';
   if(largo > UMBRAL['2k'] * (z.nivel === '1k' ? 1 : .75)) return '2k';
   return '1k';
 }
-async function revisarTexturas(){
+function aplicar(z, nivel){
+  for(const c of z.capas) c.mat.map = z.tex[c.capa + nivel].t;
+  z.nivel = nivel;
+  pedirDibujo();
+}
+function revisarTexturas(){
+  const ahora = performance.now();
+  const quieto = !arrastrando && dedos.size === 0 && ahora - quietoDesde > QUIETO_MS;
+  let subio = false;
   for(const z of zapatos){
-    if(!z.listo || z.pidiendo) continue;
+    if(!z.listo) continue;
     const quiero = nivelDeseado(z);
-    if(quiero === z.nivel) continue;
-    z.pidiendo = quiero;
-    try{
-      const ts = await Promise.all(z.capas.map(c => textura(z, quiero, c.capa)));
-      ts.forEach(t => renderer.initTexture(t));   // subirlas a la GPU antes de usarlas: sin tirón al cambiar
-      z.capas.forEach((c, i)=>{ c.mat.map = ts[i]; });
-      z.nivel = quiero;
-      pedirDibujo();
-      // la de 1K se queda siempre (es la de respaldo); las grandes que ya no se usan se sueltan
-      for(const c of z.capas) for(const k of ['2k', '4k']) if(k !== quiero) soltarTextura(z, c.capa + k);
-    }catch(err){ console.warn('[tenis] textura', z.id, quiero, err); }
-    z.pidiendo = null;
+    const visible = z.grupo.visible && (z.pose?.vis ?? 0) > .2;
+    for(const c of z.capas) for(const n of [quiero, visible ? z.nivel : null]){
+      const e = n && z.tex[c.capa + n];
+      if(e) e.usada = ahora;
+    }
+    if(ORDEN[quiero] <= ORDEN[z.nivel]) continue;               // ya tiene ese nivel o uno mejor
+    const es = z.capas.map(c => textura(z, quiero, c.capa));    // que vaya bajando y decodificando
+    if(subio || !quieto || es.some(e => !e.t)) continue;
+    es.forEach(subir);
+    aplicar(z, quiero);
+    subio = true;                                               // una por vuelta: los costos no se juntan
+  }
+  podar(ahora);
+}
+function podar(ahora){
+  const grandes = [];
+  for(const z of zapatos) for(const k in z.tex){
+    const e = z.tex[k];
+    if(e.nivel === '1k') continue;
+    if(!e.subida){
+      // decodificada y ya nadie la quiere (se pasó de largo con el scroll): liberar la RAM
+      if(e.t && ahora - e.usada > 4000){ desechar(e.t); delete z.tex[k]; }
+      continue;
+    }
+    grandes.push({z, k, e});
+  }
+  let total = grandes.reduce((s, g)=> s + g.e.bytes, 0);
+  grandes.sort((a, b)=> a.e.usada - b.e.usada);
+  for(const {z, k, e} of grandes){
+    if(total <= PRESUPUESTO) break;
+    if(ahora - e.usada < 1500) continue;                        // en uso: no se toca
+    if(z.nivel === e.nivel) aplicar(z, '1k');                   // estaba puesta: vuelve a la de respaldo
+    desechar(e.t); delete z.tex[k];
+    total -= e.bytes;
   }
 }
-setInterval(revisarTexturas, 350);
+setInterval(revisarTexturas, 200);
 
 /* ---------------------------------------------------------
    5. EL RECORRIDO: una parada por <section>, en el mismo orden
@@ -1091,7 +1162,7 @@ new IntersectionObserver((es)=>{
   enPantalla = es[es.length - 1].isIntersecting;
   if(enPantalla) pedirDibujo();
 }).observe(document.getElementById('tenis'));
-let huellaPrev = NaN, hotspotsMoviendo = true;
+let huellaPrev = NaN, movimientoPrev = NaN, hotspotsMoviendo = true;
 let dpr = DPR_TOPE;
 const medidor = {n: 0, lentos: 0, ultimo: 0, mejor: Infinity};
 function medir(now){
@@ -1117,7 +1188,7 @@ function cuadro(now){
   if(!enPantalla && modo.explorar < .01) return;
   const altoMundo = 2 * CAM_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const anchoMundo = altoMundo * camera.aspect;
-  let huella = camera.aspect;
+  let huella = camera.aspect, movimiento = camera.aspect;
 
   for(const z of zapatos){
     if(!z.listo) continue;
@@ -1136,7 +1207,8 @@ function cuadro(now){
       }
     }
     p.giro += z.giroU;
-    if(!reducedMotion) p.giro += p.vaiven * .22 * Math.sin(now / 1000 * .6 + z.ip * 1.7 + (z.lado === 'der' ? 2 : 0));
+    const vaiven = reducedMotion ? 0 : p.vaiven * .22 * Math.sin(now / 1000 * .6 + z.ip * 1.7 + (z.lado === 'der' ? 2 : 0));
+    p.giro += vaiven;
     if(poseFoco && modo.foco > 0 && marcaFoco?.z === z) p = mezclar(p, poseFoco, modo.foco);
     if(modo.intro < 1 && z.ip === 0){
       // al cargar, el par de la portada sube girando; el derecho un instante después
@@ -1147,8 +1219,10 @@ function cuadro(now){
 
     z.grupo.visible = p.vis > .002 && Math.abs(p.x) < 1.6;
     if(!z.grupo.visible) continue;
-    huella += p.x * 1.3 + p.y * 1.7 + p.z * 2.3 + p.tam * 3.1 + p.giro * 3.7 + p.incl * 4.3
-            + p.ladeo * 5.9 + p.foco * 6.1 + p.vis * 7.3 + p.sombra * 8.9 + (z.ip + 1) * .001;
+    const termino = p.x * 1.3 + p.y * 1.7 + p.z * 2.3 + p.tam * 3.1 + p.giro * 3.7 + p.incl * 4.3
+                  + p.ladeo * 5.9 + p.foco * 6.1 + p.vis * 7.3 + p.sombra * 8.9 + (z.ip + 1) * .001;
+    huella += termino;
+    movimiento += termino - vaiven * 3.7;   // lo mismo sin el vaivén: decide cuándo se pueden subir texturas
     const escala = p.tam * anchoMundo;
     z.giroGrupo.rotation.y = p.giro;
     z.grupo.rotation.set(p.incl, 0, p.ladeo);
@@ -1161,6 +1235,8 @@ function cuadro(now){
     z.grupo.updateMatrixWorld(true);
     z.sombra.material.opacity = p.sombra * clamp(p.vis, 0, 1);
   }
+  if(Math.abs(movimiento - movimientoPrev) > 1e-4) quietoDesde = now;
+  movimientoPrev = movimiento;
   const cambio = pendiente || Math.abs(huella - huellaPrev) > 1e-5;
   if(cambio || hotspotsMoviendo) hotspotsMoviendo = moverHotspots(dt);
   if(!cambio){ medidor.ultimo = 0; return; }
@@ -1224,7 +1300,7 @@ function depurar({z, hit}){
   console.log(`[debug] ${z.id} "punto": ${JSON.stringify(r(p))}, "normal": ${JSON.stringify(r(n))}`);
 }
 // renderer.info.render.frame cuenta los cuadros dibujados (para revisar que en reposo no dibuje)
-if(DEBUG) window.tenisDebug = {zapatos, porId, marcas, modo, paradas, entrarExplorar, elegirExplorar, renderer,
+if(DEBUG) window.tenisDebug = {zapatos, porId, marcas, modo, paradas, entrarExplorar, elegirExplorar, renderer, scene, camera, THREE,
   // deja un tenis en modo explorar con un giro, inclinación y zoom exactos (sin animación)
   vista(id, giro, incl = 0, zoom = 1){
     html.classList.add('explorando', 'bloqueado');
