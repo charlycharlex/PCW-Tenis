@@ -171,7 +171,10 @@
   .donde{margin-top:14px; font-size:13px; color:var(--texto-suave); letter-spacing:.02em;}
 
   /* ---------- hotspots sobre las firmas ---------- */
-  #hotspots{position:absolute; inset:0; z-index:3; pointer-events:none;}
+  /* overflow:hidden: una etiqueta invisible se queda donde la dejó su tenis al salir de cuadro (fuera de
+     la pantalla, a la derecha) y ensanchaba la página: scroll horizontal en escritorio y, en celular, el
+     navegador alejaba la vista y el encabezado fijo se desacomodaba (17 de 20 paradas) */
+  #hotspots{position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden;}
   /* el origen del botón es el punto 3D: un anillo hueco marca la firma sin taparla y la
      etiqueta queda arriba, unida por una línea guía */
   .hotspot{position:absolute; left:0; top:0; width:0; height:0; border:0; padding:0; background:none;
