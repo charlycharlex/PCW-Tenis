@@ -31,7 +31,10 @@
     --linea:rgba(255,255,255,.16);
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html{background:var(--papel);}
+  /* scrollbar-gutter: al abrir una ficha o explorar se bloquea el scroll (html.bloqueado) y, con barra
+     clásica (Windows), la barra desaparece: la página se ensanchaba 15 px, el lienzo se redimensionaba
+     y el tenis brincaba. Así el espacio de la barra se queda reservado. */
+  html{background:var(--papel); scrollbar-gutter:stable;}
   body{background:var(--papel); color:var(--tinta); font-family:'Manrope',system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
   #tenis{position:relative; background:var(--fondo); color:var(--texto); transition:background-color .7s ease, color .7s ease;}
   /* mientras el panel de una marca o el modo explorar están abiertos, la página no hace scroll.
@@ -109,9 +112,20 @@
   .firma-cita{margin-top:20px; font-family:'Permanent Marker','Manrope',cursive; font-size:clamp(20px,2vw,26px);
               line-height:1.3; color:var(--texto); transform:rotate(-1.5deg); transform-origin:left;}
   .firma-cita::before{content:'“';} .firma-cita::after{content:'”';}
-  /* la firma se escribe de izquierda a derecha cuando aparece su sección */
-  .paso .firma-cita{clip-path:inset(-20% 100% -20% -5%); transition:clip-path 1.2s cubic-bezier(.6,0,.25,1) .35s;}
-  .paso .texto.visible .firma-cita{clip-path:inset(-20% -5% -20% -5%);}
+  /* La firma se escribe de izquierda a derecha cuando aparece su sección. Antes era un clip-path
+     animado: el navegador repintaba el texto de plumón en cada cuadro (medido: ~5 cuadros perdidos por
+     recorrido). Ahora es una "ventana" (overflow:hidden) que entra desde la izquierda mientras el texto
+     de adentro se mueve exactamente al revés: el texto se queda quieto y la ventana lo va descubriendo.
+     Son dos transform con la misma curva: la GPU los mueve sin repintar. El padding del span es la
+     holgura para los trazos que se salen de la caja (el margen negativo lo compensa). */
+  .paso .firma-cita{overflow:hidden; margin-left:-.35em; margin-right:-.35em;
+                    transform:rotate(-1.5deg) translateX(-101%); transition:transform 1.2s cubic-bezier(.6,0,.25,1) .35s;}
+  .paso .firma-cita > span{display:block; padding:.25em .35em;
+                           transform:translateX(101%); transition:transform 1.2s cubic-bezier(.6,0,.25,1) .35s;}
+  .paso .texto.visible .firma-cita{transform:rotate(-1.5deg);}
+  .paso .texto.visible .firma-cita > span{transform:none;}
+  .paso .firma-cita::before, .paso .firma-cita::after{content:none;}
+  .paso .firma-cita > span::before{content:'“';} .paso .firma-cita > span::after{content:'”';}
   .donde{margin-top:14px; font-size:13px; color:var(--texto-suave); letter-spacing:.02em;}
 
   /* ---------- hotspots sobre las firmas ---------- */
@@ -193,8 +207,11 @@
   @media (max-width:767px){
     .paso, .paso[data-lado="der"], .paso[data-lado="centro"]{justify-content:center; align-items:flex-end;
           padding:96px 16px 32px;}
-    .texto{max-width:none; width:100%; background:color-mix(in srgb, var(--fondo) 86%, transparent);
-           backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:22px; border-radius:20px;
+    /* sin backdrop-filter: encima del lienzo, que se redibuja en cada cuadro del scroll, el teléfono
+       tendría que volver a desenfocar todo lo que hay detrás de la tarjeta en cada cuadro. Casi opaca,
+       se ve igual. */
+    .texto{max-width:none; width:100%; background:color-mix(in srgb, var(--fondo) 93%, transparent);
+           padding:22px; border-radius:20px;
            transition:opacity .8s ease, transform .8s ease, background-color .7s ease;}
     .texto p{font-size:15px;}
     .paso[data-tipo="marca"] h2{font-size:36px;}
@@ -207,6 +224,11 @@
     .explorar-nav{width:100%; max-width:420px;}
     #respaldo{padding:80px 16px 0; align-content:start;}
     #respaldo img{height:calc(50svh / var(--filas, 5));}
+  }
+  /* pantallas táctiles: los botones fijos que flotan sobre el lienzo, sin desenfoque (mismo motivo) */
+  @media (max-width:767px), (pointer:coarse){
+    .boton.fantasma{backdrop-filter:none; -webkit-backdrop-filter:none; background:color-mix(in srgb, var(--fondo) 92%, transparent);}
+    .explorar-nav{backdrop-filter:none; -webkit-backdrop-filter:none; background:rgba(255,255,255,.96);}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.001s !important; transition-duration:.2s !important;}
@@ -389,7 +411,7 @@
       seccion('marca-' + m.id, {'data-tipo': 'marca', 'data-marca': m.id, 'data-par': par.id, 'data-lado': lado, 'data-tono': 'oscuro'}, [
         el('span', {clase: 'etiqueta', texto: 'Firma ' + nMarca + ' de ' + totalMarcas}),
         el('h2', {texto: m.marca}),
-        el('div', {clase: 'firma-cita', texto: m.firma}),
+        el('div', {clase: 'firma-cita'}, [el('span', {texto: m.firma})]),
         el('div', {clase: 'donde', texto: par.nombre.replace(/^El par /i, 'Par ') + ' · tenis ' + LADO[t[1]]}),
         el('div', {clase: 'acciones', 'data-requiere-3d': ''}, [
           el('button', {clase: 'boton', type: 'button', 'data-ficha': m.id, texto: 'Ver el proyecto'})
