@@ -661,6 +661,27 @@ const ktx2Loader = new KTX2Loader()
   .setTranscoderPath('vendor/three@0.170.0/examples/jsm/libs/basis/')
   .setWorkerLimit(2)
   .detectSupport(renderer);
+/* Lo que permite el sitio (Content-Security-Policy), probado antes de cargar nada: si un decodificador
+   no puede arrancar, su worker falla en silencio y la página se quedaría en el cargador para siempre.
+   - Sin 'unsafe-eval': el transcodificador de Basis (Emscripten) genera funciones con new Function y no
+     arranca → todo en JPEG (se ve igual; solo se pierde la subida barata del KTX2).
+   - Sin 'wasm-unsafe-eval' o sin workers desde blob: (worker-src) no hay Draco → sin 3D (respaldo).
+   Los workers heredan la política de la página, así que basta probarla aquí. */
+const permiteEval = (()=>{ try{ new Function(''); return true; }catch(err){ return false; } })();
+const permiteWasm = (()=>{ try{ new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); return true; }catch(err){ return false; } })();
+function permiteWorkers(){
+  return new Promise((listo)=>{
+    let w;
+    const fin = (ok)=>{ clearTimeout(reloj); w?.terminate(); listo(ok); };
+    const reloj = setTimeout(()=> fin(false), 4000);
+    try{
+      w = new Worker(URL.createObjectURL(new Blob(['postMessage(1)'], {type: 'text/javascript'})));
+      w.onmessage = ()=> fin(true);
+      w.onerror = ()=> fin(false);
+    }catch(err){ fin(false); }
+  });
+}
+if(!permiteEval) console.warn('[tenis] el sitio no permite eval (CSP): texturas en JPEG en vez de KTX2');
 async function comprimida(url){
   const t = await ktx2Loader.loadAsync(url);   // sRGB y sin voltear vienen del archivo
   t.anisotropy = maxAniso;
@@ -679,7 +700,7 @@ function textura(z, nivel, capa = ''){
   let e = z.tex[k];
   if(!e){
     const ancho = LADO[nivel], alto = capa ? ancho / 4 : ancho;   // el atlas de firmas es 4:1
-    const base = `${RUTA}tex/${z.id}${capa}_${nivel}`, ktx = nivel !== '4k';
+    const base = `${RUTA}tex/${z.id}${capa}_${nivel}`, ktx = nivel !== '4k' && permiteEval;
     e = z.tex[k] = {nivel, capa, t: null, subida: false, usada: performance.now(),
                     bytes: ancho * alto * (ktx ? 1 : 4) * 4 / 3};   // + mipmaps; comprimida ≤ 1 byte/px
     const carga = ktx
@@ -1028,6 +1049,9 @@ function arrancar(){
 // uno y cuando el navegador está libre, para no competir con el scroll
 const ocioso = ()=> new Promise(r => 'requestIdleCallback' in window ? requestIdleCallback(()=> r(), {timeout: 800}) : setTimeout(r, 60));
 async function cargarTodo(){
+  // sin WebAssembly o sin workers no hay Draco (ver arriba): el respaldo, no un cargador eterno
+  if(!permiteWasm) throw window.tenisSin3D('el sitio no permite WebAssembly (CSP sin wasm-unsafe-eval)');
+  if(!(await permiteWorkers())) throw window.tenisSin3D('el sitio no permite workers desde blob: (CSP worker-src)');
   const primeros = D.pares[0].tenis.map(id => porId.get(id));
   const progreso = new Map();
   const alProgreso = (id)=> (ev)=>{
