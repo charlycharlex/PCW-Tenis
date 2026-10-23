@@ -182,7 +182,8 @@
   #cargando span{font-size:13px; color:var(--tinta-suave); text-align:center; max-width:280px;}
   #respaldo{display:none; position:absolute; inset:0; padding:90px 4vw 0 46vw; pointer-events:none;
             grid-template-columns:repeat(2,1fr); align-content:center; gap:8px 18px;}
-  #respaldo img{width:100%; height:calc((100svh - 140px) / 4); object-fit:contain;}
+  /* una fila por par (--filas lo pone el script con el número de pares) */
+  #respaldo img{width:100%; height:calc((100svh - 140px) / var(--filas, 5)); object-fit:contain;}
   html.sin3d #respaldo{display:grid;}
   html.sin3d #escena, html.sin3d #hotspots, html.sin3d [data-requiere-3d]{display:none !important;}
   /* ?incrustado: la página vive dentro del sitio de la agencia, que ya trae su propia barra */
@@ -205,7 +206,7 @@
     .exp-nombre{min-width:0; flex:1;}
     .explorar-nav{width:100%; max-width:420px;}
     #respaldo{padding:80px 16px 0; align-content:start;}
-    #respaldo img{height:calc(50svh / 4);}
+    #respaldo img{height:calc(50svh / var(--filas, 5));}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.001s !important; transition-duration:.2s !important;}
@@ -274,7 +275,8 @@
     {"id": "verde", "nombre": "El par verde", "modelo": "Nike Dunk High × Ambush", "tenis": ["verde_izq", "verde_der"]},
     {"id": "rosa",  "nombre": "El par rosa",  "modelo": "Nike Dunk High × Ambush", "tenis": ["rosa_izq", "rosa_der"]},
     {"id": "azul",  "nombre": "El par azul",  "modelo": "", "tenis": ["azul_izq", "azul_der"]},
-    {"id": "negro", "nombre": "El par negro", "modelo": "", "tenis": ["negro_izq", "negro_der"]}
+    {"id": "negro", "nombre": "El par negro", "modelo": "", "tenis": ["negro_izq", "negro_der"]},
+    {"id": "plateado", "nombre": "El par plateado", "modelo": "", "tenis": ["plateado_izq", "plateado_der"], "cromo": true}
   ],
   "marcas": [
     {"id": "nescafe", "tenis": "verde_izq", "marca": "Nescafé Dolce Gusto", "etiqueta": "NESCAFÉ",
@@ -309,6 +311,15 @@
      "proyecto": "", "anio": "", "texto": ""},
     {"id": "tec", "tenis": "negro_der", "marca": "Tec de Monterrey", "etiqueta": "TEC",
      "firma": "J.L. inspiras al TEC. Gracias infinitas", "punto": [-0.1207, -0.0818, 0.0], "normal": [-0.805, 0.592, -0.028],
+     "proyecto": "", "anio": "", "texto": ""},
+    {"id": "cocacola", "tenis": "plateado_izq", "marca": "Coca-Cola", "etiqueta": "COCA-COLA",
+     "firma": "…transformación y reinvención", "punto": [0.0181, -0.1388, 0.4065], "normal": [0.17, 0.959, 0.229],
+     "proyecto": "", "anio": "", "texto": ""},
+    {"id": "sanfer", "tenis": "plateado_izq", "marca": "Sanfer", "etiqueta": "SANFER",
+     "firma": "#1 Sanfer! ¡Vamos x L. América", "punto": [0.0949, -0.1002, 0.0875], "normal": [0.895, 0.445, -0.032],
+     "proyecto": "", "anio": "", "texto": ""},
+    {"id": "heineken", "tenis": "plateado_izq", "marca": "Heineken", "etiqueta": "HEINEKEN",
+     "firma": "Sin miedo a cambiar se construye un futuro diferente!", "punto": [0.1328, -0.2449, -0.3127], "normal": [0.975, -0.193, -0.11],
      "proyecto": "", "anio": "", "texto": ""}
   ]
 }
@@ -414,6 +425,7 @@
     console.warn('[tenis] sin 3D:', motivo);
     html.classList.add('sin3d');
     var r = document.getElementById('respaldo');
+    r.style.setProperty('--filas', D.pares.length);
     D.pares.forEach(function(p){ p.tenis.forEach(function(id){
       r.appendChild(el('img', {src: 'modelos/poster/' + id + '.webp', alt: 'Tenis ' + id.replace('_', ' ') + ' cubierto de firmas', loading: 'lazy'}));
     }); });
@@ -455,13 +467,16 @@ const esCelular = ()=> innerWidth <= 767;
    1. ESCENA
 --------------------------------------------------------- */
 const canvas = document.getElementById('escena');
+// Resolución: el tope de densidad de pixeles, y de ahí baja sola si el equipo no alcanza (ver 9.).
+// Con densidad 2 o más los bordes ya se ven finos: el antialiasing (MSAA) solo cuesta, no se nota.
+const DPR_TOPE = Math.min(devicePixelRatio, esCelular() ? 1.5 : 2);
 let renderer;
 try{
-  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
+  renderer = new THREE.WebGLRenderer({canvas, antialias: DPR_TOPE < 2, alpha:true, powerPreference:'high-performance'});
 }catch(err){
   throw window.tenisSin3D('sin WebGL');
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, esCelular() ? 1.5 : 2));
+renderer.setPixelRatio(DPR_TOPE);
 renderer.setClearColor(0x000000, 0);
 canvas.addEventListener('webglcontextlost', (e)=>{
   e.preventDefault();
@@ -471,6 +486,11 @@ canvas.addEventListener('webglcontextlost', (e)=>{
 const PERMITE_4K = !matchMedia('(pointer: coarse)').matches && renderer.capabilities.maxTextureSize >= 4096
                    && (navigator.deviceMemory ?? 8) >= 4;
 const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+// Se dibuja solo cuando algo cambió (ver 9.). Lo que cambia fuera del loop (una textura nueva, el
+// tamaño del lienzo, un tenis que termina de cargar) lo avisa con pedirDibujo().
+let pendiente = true;
+const pedirDibujo = ()=>{ pendiente = true; };
 
 const scene = new THREE.Scene();
 const CAM_DIST = 5;
@@ -489,7 +509,7 @@ D.pares.forEach((par, ip)=> par.tenis.forEach((id)=>{
   const z = {
     id, par, ip, lado: id.endsWith('_izq') ? 'izq' : 'der',
     grupo: new THREE.Group(), giroGrupo: new THREE.Group(),
-    mallas: [], mat: null, listo: false, tex: {}, nivel: null, pidiendo: null,
+    mallas: [], mat: null, capas: [], listo: false, tex: {}, nivel: null, pidiendo: null,
     estado: {}, pose: null, giroU: 0, velU: 0, sel: {peso: 0}, marcas: [],
   };
   z.grupo.add(z.giroGrupo); z.grupo.visible = false; scene.add(z.grupo);
@@ -507,7 +527,9 @@ const nombreTenis = (z)=> `${z.par.nombre.replace(/^El par /i, 'Par ')} · ${z.l
 const exterior = (z)=> z.lado === 'der' ? Math.PI / 2 : -Math.PI / 2;
 // giro e inclinación que dejan la firma mirando a la cámara
 const frente = (m)=> Math.atan2(-m.n.x, m.n.z);
-const inclFrente = (m)=> Math.atan2(m.n.y, Math.hypot(m.n.x, m.n.z));
+// nunca desde abajo: ningún escaneo tiene una suela de abajo presentable (en el plateado la tapa y los
+// relieves quedan encimados y se ven negros). Las firmas que miran un poco al piso se ven de frente.
+const inclFrente = (m)=> Math.max(.02, Math.atan2(m.n.y, Math.hypot(m.n.x, m.n.z)));
 const cercano = (angulo, a)=> angulo + Math.round((a - angulo) / TAU) * TAU;
 const lerp = THREE.MathUtils.lerp, clamp = THREE.MathUtils.clamp;
 function mezclar(a, b, t){ const r = {}; for(const k in BASE) r[k] = lerp(a[k] ?? BASE[k], b[k] ?? a[k] ?? BASE[k], t); return r; }
@@ -519,26 +541,62 @@ const cargando = document.getElementById('cargando');
 const barra = cargando.querySelector('i');
 const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/');
 const gltfLoader = new GLTFLoader().setDRACOLoader(draco);
-const texLoader = new THREE.TextureLoader();
 
-async function textura(z, nivel){
-  if(z.tex[nivel]) return z.tex[nivel];
-  const t = await texLoader.loadAsync(`${RUTA}tex/${z.id}_${nivel}.jpg`);
-  t.flipY = false;                         // convención de UV de glTF
-  t.colorSpace = THREE.SRGBColorSpace;
+/* Imágenes decodificadas fuera del hilo principal (createImageBitmap): con <img> el JPEG de 4K se
+   decodifica al subirlo a la GPU y congela la animación justo al acercarse a una firma. Safari y
+   Firefox viejo no aceptan las opciones que hacen falta: ahí se usa el cargador de siempre (mismo
+   criterio que GLTFLoader). */
+const ua = navigator.userAgent;
+const ffVersion = +(/Firefox\/(\d+)/.exec(ua)?.[1] ?? 0);
+const bitmapLoader = (typeof createImageBitmap !== 'undefined' && !/^((?!chrome|android).)*safari/i.test(ua)
+                      && !(ffVersion && ffVersion < 98))
+  ? new THREE.ImageBitmapLoader().setOptions({imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none'})
+  : null;
+const texLoader = new THREE.TextureLoader();
+async function imagen(url, esColor){
+  let t;
+  if(bitmapLoader){
+    const bmp = await bitmapLoader.loadAsync(url);
+    t = new THREE.Texture(bmp);
+    t.needsUpdate = true;
+    // ya en la GPU, la copia decodificada en memoria normal sobra (un 4K son 64 MB)
+    t.onUpdate = ()=>{ bmp.close?.(); t.onUpdate = null; };
+  }else{
+    t = await texLoader.loadAsync(url);
+  }
+  t.flipY = false;                         // convención de UV de glTF (y un ImageBitmap no se voltea)
+  if(esColor) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = maxAniso;
-  z.tex[nivel] = t;
   return t;
 }
 
+/* Las texturas de un tenis por capa y nivel: '' es la del escaneo y '_firmas' la de la suela con
+   firmas (solo el plateado izquierdo). Se guarda la promesa: si dos partes piden la misma a la vez,
+   se baja una sola vez. */
+function textura(z, nivel, capa = ''){
+  const k = capa + nivel;
+  z.tex[k] ??= imagen(`${RUTA}tex/${z.id}${capa}_${nivel}.jpg`, true).catch((err)=>{ delete z.tex[k]; throw err; });
+  return z.tex[k];
+}
+function soltarTextura(z, k){
+  z.tex[k]?.then(t => t.dispose(), ()=>{});
+  delete z.tex[k];
+}
+
+// una sola textura y una sola geometría para las 10 sombras (cada una lleva su material por la opacidad)
+let texSombra = null, geoSombra = null;
 function crearSombra(alto){
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d');
-  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0, 'rgba(11,20,39,.4)'); grad.addColorStop(.55, 'rgba(11,20,39,.14)'); grad.addColorStop(1, 'rgba(11,20,39,0)');
-  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
-    new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false}));
+  if(!texSombra){
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(11,20,39,.4)'); grad.addColorStop(.55, 'rgba(11,20,39,.14)'); grad.addColorStop(1, 'rgba(11,20,39,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+    texSombra = new THREE.CanvasTexture(c);
+    geoSombra = new THREE.PlaneGeometry(1, 1);
+  }
+  const m = new THREE.Mesh(geoSombra,
+    new THREE.MeshBasicMaterial({map: texSombra, transparent: true, depthWrite: false}));
   m.rotation.x = -Math.PI / 2;
   m.scale.set(.46, 1.1, 1);   // el tenis es largo en z
   m.position.y = -alto / 2 - .003;
@@ -546,10 +604,32 @@ function crearSombra(alto){
   return m;
 }
 
+/* Cromo (pares con "cromo": true). La textura del escaneo ya trae los reflejos que había al
+   fotografiarlo, pero quietos: al girar el tenis se ve pintado de plata. Se suma un entorno de estudio
+   (fondo oscuro con tres tiras de luz suaves) que sí se mueve con el giro, y solo donde la máscara de
+   metal lo pide (agujetas y lengüetas de tela no brillan). Sale de un canvas: no hay nada que bajar. */
+let entornoCromo = null;
+function entorno(){
+  if(entornoCromo) return entornoCromo;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  const cielo = g.createLinearGradient(0, 0, 0, 256);
+  cielo.addColorStop(0, '#3a3f4c'); cielo.addColorStop(.5, '#14171e'); cielo.addColorStop(1, '#07080b');
+  g.fillStyle = cielo; g.fillRect(0, 0, 512, 256);
+  g.filter = 'blur(10px)';
+  g.fillStyle = 'rgba(255,255,255,.95)'; g.fillRect(60, 40, 120, 26);     // tira principal, arriba
+  g.fillStyle = 'rgba(255,255,255,.7)';  g.fillRect(300, 70, 34, 110);    // tira vertical al costado
+  g.fillStyle = 'rgba(210,225,255,.5)';  g.fillRect(420, 30, 70, 18);     // contraluz fría
+  entornoCromo = new THREE.CanvasTexture(c);
+  entornoCromo.mapping = THREE.EquirectangularReflectionMapping;
+  entornoCromo.colorSpace = THREE.SRGBColorSpace;
+  return entornoCromo;
+}
 async function cargarZapato(z, nivel, alProgreso){
-  const [gltf, tex] = await Promise.all([
+  const [gltf, tex, metal] = await Promise.all([
     gltfLoader.loadAsync(`${RUTA}${z.id}.glb`, alProgreso),
     textura(z, nivel),
+    z.par.cromo ? imagen(`${RUTA}tex/${z.id}_metal.jpg`, false).catch(()=> null) : null,
   ]);
   const modelo = gltf.scene;
   const caja = new THREE.Box3().setFromObject(modelo);
@@ -560,21 +640,35 @@ async function cargarZapato(z, nivel, alProgreso){
   z.alto = tam.y * escala;
   modelo.traverse((o)=>{
     if(!o.isMesh) return;
-    const esEscaneo = (o.material.name || '').startsWith('escaneo');
+    const nombre = o.material.name || '';
+    const conColor = !!o.geometry.attributes.color;
     o.material.dispose();
     // la luz viene horneada (en la textura del escaneo y en los vértices de la suela): sin sombreado
-    o.material = esEscaneo
-      ? new THREE.MeshBasicMaterial({map: tex})
-      : new THREE.MeshBasicMaterial({vertexColors: !!o.geometry.attributes.color, color: o.geometry.attributes.color ? 0xffffff : 0x777777});
-    if(esEscaneo) z.mat = o.material;
+    if(nombre.startsWith('escaneo')){
+      o.material = z.mat = new THREE.MeshBasicMaterial({map: tex});
+      if(metal) Object.assign(o.material, {envMap: entorno(), specularMap: metal,
+                                           combine: THREE.AddOperation, reflectivity: .28});   // más lava las firmas
+      z.capas.push({capa: '', mat: o.material});
+    }else if(nombre.startsWith('firmas')){
+      // la imagen de las firmas (se pone abajo) por la luz de ambiente horneada en los vértices
+      o.material = new THREE.MeshBasicMaterial({vertexColors: conColor});
+      z.capas.push({capa: '_firmas', mat: o.material});
+    }else{
+      o.material = new THREE.MeshBasicMaterial({vertexColors: conColor, color: conColor ? 0xffffff : 0x777777});
+    }
     z.mallas.push(o);
   });
+  for(const c of z.capas){
+    if(c.capa) c.mat.map = await textura(z, nivel, c.capa);
+    renderer.initTexture(c.mat.map);
+  }
+  if(metal) renderer.initTexture(metal);
   z.giroGrupo.add(modelo);
   z.sombra = crearSombra(z.alto);
   z.giroGrupo.add(z.sombra);
   z.nivel = nivel;
-  renderer.initTexture(tex);
   z.listo = true;
+  pedirDibujo();
 }
 
 /* ---------------------------------------------------------
@@ -600,10 +694,13 @@ async function revisarTexturas(){
     if(quiero === z.nivel) continue;
     z.pidiendo = quiero;
     try{
-      const t = await textura(z, quiero);
-      renderer.initTexture(t);            // subirla a la GPU antes de usarla: sin tirón al cambiar
-      z.mat.map = t; z.nivel = quiero;
-      for(const k of ['2k', '4k']) if(k !== quiero && z.tex[k]){ z.tex[k].dispose(); delete z.tex[k]; }
+      const ts = await Promise.all(z.capas.map(c => textura(z, quiero, c.capa)));
+      ts.forEach(t => renderer.initTexture(t));   // subirlas a la GPU antes de usarlas: sin tirón al cambiar
+      z.capas.forEach((c, i)=>{ c.mat.map = ts[i]; });
+      z.nivel = quiero;
+      pedirDibujo();
+      // la de 1K se queda siempre (es la de respaldo); las grandes que ya no se usan se sueltan
+      for(const c of z.capas) for(const k of ['2k', '4k']) if(k !== quiero) soltarTextura(z, c.capa + k);
     }catch(err){ console.warn('[tenis] textura', z.id, quiero, err); }
     z.pidiendo = null;
   }
@@ -742,8 +839,10 @@ function arrancar(){
   window.tenis3D = true;
 }
 
-// el par de la portada decide cuándo se quita el cargador; los demás entran mientras se lee
-(async ()=>{
+// el par de la portada decide cuándo se quita el cargador; los demás entran mientras se lee, uno por
+// uno y cuando el navegador está libre, para no competir con el scroll
+const ocioso = ()=> new Promise(r => 'requestIdleCallback' in window ? requestIdleCallback(()=> r(), {timeout: 800}) : setTimeout(r, 60));
+async function cargarTodo(){
   const primeros = D.pares[0].tenis.map(id => porId.get(id));
   const progreso = new Map();
   const alProgreso = (id)=> (ev)=>{
@@ -760,9 +859,25 @@ function arrancar(){
   arrancar();
   for(const z of zapatos){
     if(z.listo) continue;
+    await ocioso();
     try{ await cargarZapato(z, '1k'); }catch(err){ console.warn('[tenis] no cargó', z.id, err); }
   }
-})();
+}
+// Dentro de la landing de la agencia la sección está casi al final: no se baja nada (~6.5 MB) hasta que
+// el visitante se acerca a ella (a pantalla y media). Como página suelta empieza de inmediato.
+const seccionTenis = document.getElementById('tenis');
+const cajaTenis = seccionTenis.getBoundingClientRect();
+const altoVentana = Math.max(innerHeight, 1);   // 0 en una pestaña abierta sin mostrarse
+if(cajaTenis.top < altoVentana * 2.5 && cajaTenis.bottom > -altoVentana * 1.5){
+  cargarTodo();   // ya está a la vista (la página suelta): sin esperar al primer cuadro
+}else{
+  const vigiaCarga = new IntersectionObserver((es)=>{
+    if(!es.some(e => e.isIntersecting)) return;
+    vigiaCarga.disconnect();
+    cargarTodo();
+  }, {rootMargin: '150% 0px'});
+  vigiaCarga.observe(seccionTenis);
+}
 
 /* ---------------------------------------------------------
    6. GIRO CON ARRASTRE (y pellizco en modo explorar)
@@ -828,7 +943,8 @@ addEventListener('pointermove', (e)=>{
   const sens = 7 / canvas.clientWidth;   // cruzar el lienzo ≈ una vuelta completa
   arrastrando.giroU += dx * sens;
   arrastrando.velU = dx * sens / dt * 1000;
-  if(modo.explorar > .5) inclUsuario = clamp(inclUsuario + dy * sens * .6, -.35, 1.1);
+  // -.12: con la inclinación base (.14) la cámara llega a ras del piso, nunca por debajo
+  if(modo.explorar > .5) inclUsuario = clamp(inclUsuario + dy * sens * .6, -.12, 1.1);
   ultX = e.clientX; ultY = e.clientY; ultT = now;
 });
 function distanciaDedos(){ const [a, b] = [...dedos.values()]; return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -962,11 +1078,46 @@ panel.querySelector('.cerrar').addEventListener('click', cerrarPanel);
 const tmp = new THREE.Vector3(), tmpN = new THREE.Vector3(), aCam = new THREE.Vector3();
 let tPrev = performance.now();
 
+/* Qué se ahorra:
+   - Fuera de pantalla no se calcula ni se dibuja nada (dentro de la landing de la agencia, mientras
+     el visitante lee otras secciones). Con la pestaña en segundo plano el navegador ya lo pausa.
+   - Si nada se movió desde el último cuadro, no se vuelve a dibujar: en una parada quieta la GPU
+     descansa. La "huella" es una suma de todo lo que define la imagen; con la inercia del dedo y el
+     regreso a la pose, que nunca llegan exactamente a cero, se cortan los restos (ver abajo).
+   - Si el equipo no alcanza (2/3 de los cuadros tardan más de 1.5 veces lo normal de esa pantalla,
+     y al menos 20 ms), se baja la resolución un escalón, hasta densidad 1. */
+let enPantalla = true;
+new IntersectionObserver((es)=>{
+  enPantalla = es[es.length - 1].isIntersecting;
+  if(enPantalla) pedirDibujo();
+}).observe(document.getElementById('tenis'));
+let huellaPrev = NaN, hotspotsMoviendo = true;
+let dpr = DPR_TOPE;
+const medidor = {n: 0, lentos: 0, ultimo: 0, mejor: Infinity};
+function medir(now){
+  const intervalo = now - medidor.ultimo;
+  medidor.ultimo = now;
+  if(intervalo > 100) return;                  // venía de una pausa: no dice nada del equipo
+  medidor.mejor = Math.max(6, Math.min(medidor.mejor, intervalo));
+  medidor.n++;
+  if(intervalo > Math.max(20, medidor.mejor * 1.5)) medidor.lentos++;
+  if(medidor.n < 90) return;
+  if(medidor.lentos > 60 && dpr > 1){
+    dpr = Math.max(1, dpr - .25);
+    renderer.setPixelRatio(dpr);
+    ajustarTamano();
+    if(DEBUG) console.log('[tenis] resolución bajada a', dpr);
+  }
+  medidor.n = medidor.lentos = 0;
+}
+
 function cuadro(now){
   requestAnimationFrame(cuadro);
   const dt = Math.min(.05, (now - tPrev) / 1000); tPrev = now;
+  if(!enPantalla && modo.explorar < .01) return;
   const altoMundo = 2 * CAM_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const anchoMundo = altoMundo * camera.aspect;
+  let huella = camera.aspect;
 
   for(const z of zapatos){
     if(!z.listo) continue;
@@ -976,10 +1127,12 @@ function cuadro(now){
     if(arrastrando !== z){
       z.giroU += z.velU * dt;
       z.velU *= Math.exp(-dt * 3.5);
+      if(Math.abs(z.velU) < 1e-3) z.velU = 0;
       const regreso = 1 - modo.explorar;
       if(regreso > 0){
         const meta = Math.round(z.giroU / TAU) * TAU;
         z.giroU += (meta - z.giroU) * (1 - Math.exp(-dt * 2.2 * regreso));
+        if(Math.abs(meta - z.giroU) < 1e-4) z.giroU = meta;
       }
     }
     p.giro += z.giroU;
@@ -994,6 +1147,8 @@ function cuadro(now){
 
     z.grupo.visible = p.vis > .002 && Math.abs(p.x) < 1.6;
     if(!z.grupo.visible) continue;
+    huella += p.x * 1.3 + p.y * 1.7 + p.z * 2.3 + p.tam * 3.1 + p.giro * 3.7 + p.incl * 4.3
+            + p.ladeo * 5.9 + p.foco * 6.1 + p.vis * 7.3 + p.sombra * 8.9 + (z.ip + 1) * .001;
     const escala = p.tam * anchoMundo;
     z.giroGrupo.rotation.y = p.giro;
     z.grupo.rotation.set(p.incl, 0, p.ladeo);
@@ -1006,14 +1161,20 @@ function cuadro(now){
     z.grupo.updateMatrixWorld(true);
     z.sombra.material.opacity = p.sombra * clamp(p.vis, 0, 1);
   }
+  const cambio = pendiente || Math.abs(huella - huellaPrev) > 1e-5;
+  if(cambio || hotspotsMoviendo) hotspotsMoviendo = moverHotspots(dt);
+  if(!cambio){ medidor.ultimo = 0; return; }
   renderer.render(scene, camera);
-  moverHotspots(dt);
+  huellaPrev = huella; pendiente = false;
+  medir(now);
 }
 
+// devuelve si alguno sigue apareciendo o desapareciendo (para seguir actualizándolos sin redibujar)
 function moverHotspots(dt){
-  const w = canvas.clientWidth, hgt = canvas.clientHeight;
+  const w = lienzo.w, hgt = lienzo.h;   // medidas guardadas: leer clientWidth aquí forzaría un reflow
   const actual = paradas[paradaActual];
   const panelAbierto = panel.classList.contains('abierto');
+  let moviendo = false;
   for(const m of marcas){
     if(!m.el) continue;
     const z = m.z;
@@ -1022,6 +1183,7 @@ function moverHotspots(dt){
     let quiero = modo.explorar > .5 ? (z.id === explorarId ? 1 : 0) : enParada;
     if(panelAbierto || !z.listo || !z.grupo.visible) quiero = 0;
     m.peso += (quiero - m.peso) * (1 - Math.exp(-dt * 6));
+    if(Math.abs(quiero - m.peso) > .002) moviendo = true;
     if(m.peso < .01){ if(m.el.style.opacity !== '0'){ m.el.style.opacity = '0'; m.el.classList.remove('activo'); m.el.tabIndex = -1; } continue; }
     const pos = z.giroGrupo.localToWorld(tmp.copy(m.p));
     const n = tmpN.copy(m.n).transformDirection(z.giroGrupo.matrixWorld);
@@ -1034,15 +1196,19 @@ function moverHotspots(dt){
     m.el.classList.toggle('activo', alfa > .4);
     m.el.tabIndex = alfa > .4 ? 0 : -1;
   }
+  return moviendo;
 }
 
 // el lienzo mide lo que mida su escenario (la ventana, o la pantalla completa en modo explorar)
+const lienzo = {w: 0, h: 0};
 function ajustarTamano(){
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if(!w || !h) return;
+  lienzo.w = w; lienzo.h = h;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
+  pedirDibujo();
 }
 new ResizeObserver(ajustarTamano).observe(canvas);
 ajustarTamano();
@@ -1057,7 +1223,8 @@ function depurar({z, hit}){
   const r = (v)=> v.toArray().map(x => +x.toFixed(4));
   console.log(`[debug] ${z.id} "punto": ${JSON.stringify(r(p))}, "normal": ${JSON.stringify(r(n))}`);
 }
-if(DEBUG) window.tenisDebug = {zapatos, porId, marcas, modo, paradas, entrarExplorar, elegirExplorar,
+// renderer.info.render.frame cuenta los cuadros dibujados (para revisar que en reposo no dibuje)
+if(DEBUG) window.tenisDebug = {zapatos, porId, marcas, modo, paradas, entrarExplorar, elegirExplorar, renderer,
   // deja un tenis en modo explorar con un giro, inclinación y zoom exactos (sin animación)
   vista(id, giro, incl = 0, zoom = 1){
     html.classList.add('explorando', 'bloqueado');

@@ -23,13 +23,25 @@ tex = bpy.data.images.load(os.path.join(RAIZ, 'modelos', 'tex', ident + '_4k.jpg
 mallas = [o for o in bpy.data.objects if o.type == 'MESH']
 for o in mallas:
     for m in o.data.materials:
-        m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
+        m.use_nodes = True; nt = m.node_tree
+        propia = (bpy.data.images.load(os.path.join(RAIZ, 'modelos', 'tex', ident + '_firmas_4k.jpg'))
+                  if m.name.startswith('firmas') else None)
+        nt.nodes.clear()
         out = nt.nodes.new('ShaderNodeOutputMaterial'); em = nt.nodes.new('ShaderNodeEmission')
         if m.name.startswith('escaneo'):
-            src = nt.nodes.new('ShaderNodeTexImage'); src.image = tex
+            src = nt.nodes.new('ShaderNodeTexImage'); src.image = tex; color = src.outputs['Color']
+        elif propia:
+            # firmas de la suela: su imagen por la luz horneada en los vértices, como en la página
+            t = nt.nodes.new('ShaderNodeTexImage'); t.image = propia
+            v = nt.nodes.new('ShaderNodeVertexColor'); v.layer_name = o.data.color_attributes[0].name
+            mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'
+            mx.inputs['Factor'].default_value = 1
+            nt.links.new(t.outputs['Color'], mx.inputs[6]); nt.links.new(v.outputs['Color'], mx.inputs[7])
+            color = mx.outputs[2]
         else:
             src = nt.nodes.new('ShaderNodeVertexColor'); src.layer_name = o.data.color_attributes[0].name
-        nt.links.new(src.outputs['Color'], em.inputs['Color']); nt.links.new(em.outputs[0], out.inputs['Surface'])
+            color = src.outputs['Color']
+        nt.links.new(color, em.inputs['Color']); nt.links.new(em.outputs[0], out.inputs['Surface'])
 
 pts = [o.matrix_world @ mathutils.Vector(v) for o in mallas for v in o.bound_box]
 mn = mathutils.Vector([min(p[i] for p in pts) for i in range(3)]); mx = mathutils.Vector([max(p[i] for p in pts) for i in range(3)])

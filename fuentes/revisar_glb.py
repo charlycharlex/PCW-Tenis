@@ -20,9 +20,20 @@ def plano(mat, color_desde):
 mallas = [o for o in bpy.data.objects if o.type == 'MESH']
 for o in mallas:
     for m in o.data.materials:
+        propia = (bpy.data.images.load(os.path.join(RAIZ, 'modelos', 'tex', ident + '_firmas_2k.jpg'))
+                  if m.name.startswith('firmas') else None)
         if m.name.startswith('escaneo'):
             def c(nt):
                 n = nt.nodes.new('ShaderNodeTexImage'); n.image = tex; return n.outputs['Color']
+        elif propia:
+            # firmas de la suela: su imagen por la luz horneada en los vértices, como en la página
+            def c(nt, img=propia, capa=o.data.color_attributes[0].name):
+                t = nt.nodes.new('ShaderNodeTexImage'); t.image = img
+                v = nt.nodes.new('ShaderNodeVertexColor'); v.layer_name = capa
+                mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'
+                mx.inputs['Factor'].default_value = 1
+                nt.links.new(t.outputs['Color'], mx.inputs[6]); nt.links.new(v.outputs['Color'], mx.inputs[7])
+                return mx.outputs[2]
         else:
             def c(nt):
                 n = nt.nodes.new('ShaderNodeVertexColor'); n.layer_name = o.data.color_attributes[0].name if o.data.color_attributes else 'Color'; return n.outputs['Color']

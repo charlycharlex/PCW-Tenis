@@ -6,7 +6,7 @@ Landing para **Palmer Cooper Wallace** (agencia de marketing, https://palmercoop
 Cada vez que la agencia termina un proyecto, el cliente les firma unos tenis. La landing muestra
 esos tenis en 3D como una forma innovadora de enseñar con qué marcas han trabajado.
 
-- **4 pares = 8 tenis**, escaneados en 3D (fotogrametría, `.usdz`).
+- **5 pares = 10 tenis**, escaneados en 3D (fotogrametría, `.usdz`).
 - Solo importan las firmas de **las marcas grandes**; el resto de mensajes es textura.
 - Referencia de interacción: https://www.eathungrytiger.com/ — el objeto 3D se anima conforme
   se hace scroll. Además se quiere poder **girar cada tenis 360°** para verlo.
@@ -15,11 +15,38 @@ Precedente propio: la landing de EzEat (`C:\Users\charl\Documents\Landingezeat`)
 mismo stack (three.js + GSAP + Draco, un solo `index.html` sin compilación, pellizco en celular,
 fallback si no hay WebGL). Reusar sus patrones.
 
-## Estado actual (2026-10-14)
+## Estado actual (2026-10-23)
 
-**Desarrollo con los 8 tenis listo** (pares verde, rosa, azul y negro). Falta: el par plateado
-(lo están terminando en Blender), los datos de cada ficha (proyecto, año, texto) y probar en
-celulares reales.
+**Desarrollo con los 10 tenis listo** (pares verde, rosa, azul, negro y plateado) y pasada de
+rendimiento hecha. Falta: los datos de cada ficha (proyecto, año, texto) y probar en celulares reales.
+
+- **Plateado** (llegó el 2026-10-23 como `Plateado Izquierdo/Derecho.blend`, copiados a
+  `fuentes/originales/blend/tenis_plateado_*.blend`). Las 3 marcas están en el **izquierdo**: Coca-Cola
+  (punta, cara de arriba), Sanfer (costado exterior) y Heineken (en la **suela**, cerca del talón). El
+  derecho no trae marcas ("Un placer que sea parte de esta gran familia… CMH"). En la suela del
+  izquierdo también firma alguien de UP ("Cecilia /UP/"); hoy UP solo se destaca en el azul izquierdo.
+  Diferencias con los otros 8, ya resueltas en `exportar_tenis.py`:
+  - la punta viene hacia +X → se exportan con `--giro=-90`;
+  - la suela del izquierdo trae firmas reproyectadas en un atlas (8192×2048): va como malla aparte,
+    `firmas`, con su textura en 3 tamaños (`tex/<id>_firmas_1k|2k|4k.jpg`) × luz horneada en vértices;
+  - sus piezas usan UV con nombres distintos (`st` y `Cilindrico_firmas_altura_real`): al unirlas,
+    join empata por nombre y las caras de la pared quedaban en UV (0,0) → se renombran antes de unir;
+  - cuerpo cromado: Metallic sale de un ORM (azul = metal). Se exporta `tex/<id>_metal.jpg` y la página
+    (pares con `"cromo": true`) suma un entorno de estudio dibujado en canvas, solo donde hay metal
+    (`reflectivity` .28; más lava las firmas). Los parches de "CROMO reparación" (metallic=1) se
+    hornean con metallic=0, si no salen negros;
+  - traen un plano "Fondo" oculto en vista pero no en render, que ensuciaba el horneado de la suela.
+    El exportador ahora oculta en render todo lo que no se exporta.
+  - Abajo, la tapa de la suela y los relieves quedan encimados y se ven negros: por eso la cámara
+    nunca baja del horizonte (`inclFrente` ≥ .02 y en explorar `inclUsuario` ≥ -.12).
+- **Rendimiento** (sección 9 de `index.html`): solo dibuja si algo cambió (una "huella" de las poses;
+  en una parada quieta, 0 cuadros), nada fuera de pantalla (IntersectionObserver sobre `#tenis`),
+  baja la resolución sola si los cuadros tardan, sin MSAA con densidad ≥ 2, texturas decodificadas con
+  `createImageBitmap` fuera del hilo principal (y la copia en RAM se libera al subir a la GPU), la
+  carga empieza a pantalla y media de la sección (dentro de la landing de la agencia no baja nada antes)
+  y los tenis de fondo se piden cuando el navegador está libre. Con `?debug`,
+  `tenisDebug.renderer.info.render.frame` cuenta los cuadros dibujados.
+  Pendiente posible: KTX2 (no hay `toktx`/`basisu` en esta máquina) y LOD para la colección en celular.
 
 - Los escaneos llegaron limpios y con suela reconstruida en `.blend` (zip "INVIS PROYECT"):
   extraídos en `fuentes/originales/blend/`, y las fotos de firmas en `fuentes/originales/firmas/`
@@ -30,13 +57,14 @@ celulares reales.
 - Firmas destacadas (11, confirmadas por el equipo): Nescafé Dolce Gusto ("NDG powered by KRUPS",
   verde izq.), Lucha Libre ("…a la BATALLA", verde izq.), Mondelēz y Santa Clara ("libres y gloriosos", verde der.),
   Bimbo, Lyncott y Tequila Altos ("AAAAAALTOS!!", rosa der.), Gentera y UP (azul izq.), Elemental (azul der.), Tec de Monterrey
-  (negro der.). El negro izquierdo no tiene firma destacada. Del plateado: Coca-Cola, Heineken, Sanfer.
+  (negro der.), Coca-Cola, Sanfer y Heineken (plateado izq.). El negro izquierdo y el plateado derecho
+  no tienen firma destacada. Total: 14.
 - Interacción: el arrastre horizontal gira el tenis que está bajo el dedo (regresa solo).
   "Explorar en 360°" muestra un tenis a la vez, con flechas, giro en 2 ejes y pellizco/rueda. En la
   colección, tocar un tenis lo abre. La ficha de marca acerca la cámara a la firma.
 - Carga: el par de la portada decide cuándo se quita el cargador; los demás entran en segundo
   plano. La textura es 1K/2K/4K según el largo del tenis en píxeles (4K solo en escritorio): `nivelDeseado()`.
-- Sin WebGL → rejilla con las 8 fotos fijas (`modelos/poster/`) y todo el texto.
+- Sin WebGL → rejilla con las fotos fijas (`modelos/poster/`, una fila por par) y todo el texto.
 - Probado con Chrome headless (escritorio 1440 y celular 390). **No probado en celulares reales.**
 
 Para verlo: servir la carpeta (`fetch` del `.glb` no funciona abriendo el archivo directo):
@@ -127,11 +155,16 @@ viene definido). El cuello de botella suele ser diseño y escaneos, no código.
 - `python` y `node` **no** están en el PATH; para procesar modelos usar el Python de Blender.
 - `fuentes/exportar_tenis.py` — **el que se usa**: convierte un `.blend` terminado (escaneo + suela)
   en `modelos/<id>.glb` (Draco; escaneo a 100k triángulos, suela a 24k con su color horneado en los
-  vértices) y `modelos/tex/<id>_1k|2k|4k.jpg`. `--girar` si la punta no viene hacia -Y de Blender.
+  vértices, suela con firmas a 30k) y `modelos/tex/<id>_1k|2k|4k.jpg` (+ `_firmas_*` y `_metal` si
+  aplican). `--girar` (180°) o `--giro=<grados>` si la punta no viene hacia -Y de Blender.
   ```
   "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P fuentes\exportar_tenis.py -- fuentes\originales\blend\tenis_azul_derecho.blend azul_der [--girar]
+  "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P fuentes\exportar_tenis.py -- fuentes\originales\blend\tenis_plateado_izquierdo.blend plateado_izq --giro=-90
   ```
   `fuentes/revisar_glb.py <id> <salida.jpg>` dibuja 4 vistas tal como las verá la página.
+  `fuentes/firma_desde_uv.py <id> escaneo|firmas <u> <v>` ubica una firma sin abrir la página: se
+  busca en la textura (px de la 4K → u = x/ancho, v = 1 - y/alto) y da `punto`/`normal` para el JSON.
+  Así salieron las 3 del plateado.
 - `fuentes/optimizar_tenis.py` — (del prototipo) convierte un `.usdz` crudo en `.glb` con Draco:
   ```
   "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P fuentes\optimizar_tenis.py -- fuentes\originales\X.usdz modelos\x.glb [triangulos=80000] [textura=2048] [--renders]
