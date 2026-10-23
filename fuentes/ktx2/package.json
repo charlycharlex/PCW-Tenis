@@ -1,0 +1,10 @@
+{
+  "name": "pcw-tenis-ktx2",
+  "private": true,
+  "description": "Convierte las texturas de modelos/tex a KTX2 (ver codificar.mjs)",
+  "type": "module",
+  "dependencies": {
+    "jpeg-js": "0.4.4",
+    "ktx2-encoder": "0.6.0"
+  }
+}

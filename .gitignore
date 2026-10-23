@@ -9,3 +9,7 @@ propuesta/
 
 # entregables pesados (renders HD): se entregan aparte
 entregables/
+
+# dependencias del convertidor a KTX2 (se instalan con npm install en fuentes/ktx2)
+node_modules/
+package-lock.json

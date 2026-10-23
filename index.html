@@ -477,6 +477,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 
 window.tenisModulo = true;
 if(typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') throw window.tenisSin3D('no cargó GSAP');
@@ -613,6 +614,22 @@ async function imagen(url, esColor){
   return t;
 }
 
+/* 1K y 2K llegan en KTX2 (Basis ETC1S, ver fuentes/ktx2/codificar.mjs): ya comprimidas para la GPU y
+   con sus mipmaps, suben en menos de 1 ms (un JPEG 2K: 15–60 ms) y ocupan 4–8 veces menos memoria de
+   video. Las transcodifica un worker. La 4K sigue en JPEG (el codificador no acepta 16 Mpx). Si el KTX2
+   falla (por ejemplo, si no carga el transcodificador), se usa el JPEG del mismo nivel. */
+const ktx2Loader = new KTX2Loader()
+  .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/')
+  .setWorkerLimit(2)
+  .detectSupport(renderer);
+async function comprimida(url){
+  const t = await ktx2Loader.loadAsync(url);   // sRGB y sin voltear vienen del archivo
+  t.anisotropy = maxAniso;
+  // ya en la GPU, los datos transcodificados en memoria normal sobran
+  t.onUpdate = ()=>{ for(const m of t.mipmaps) m.data = null; t.onUpdate = null; };
+  return t;
+}
+
 /* Las texturas de un tenis por capa y nivel: '' es la del escaneo y '_firmas' la de la suela con
    firmas (solo el plateado izquierdo). Cada una es una entrada de caché que pasa por: pedida (bajando y
    decodificando, fuera del hilo principal) → lista (decodificada, en RAM) → subida (en la GPU). Subir es
@@ -623,9 +640,13 @@ function textura(z, nivel, capa = ''){
   let e = z.tex[k];
   if(!e){
     const ancho = LADO[nivel], alto = capa ? ancho / 4 : ancho;   // el atlas de firmas es 4:1
+    const base = `${RUTA}tex/${z.id}${capa}_${nivel}`, ktx = nivel !== '4k';
     e = z.tex[k] = {nivel, capa, t: null, subida: false, usada: performance.now(),
-                    bytes: ancho * alto * 4 * 4 / 3};               // RGBA + mipmaps
-    e.promesa = imagen(`${RUTA}tex/${z.id}${capa}_${nivel}.jpg`, true).then((t)=>{
+                    bytes: ancho * alto * (ktx ? 1 : 4) * 4 / 3};   // + mipmaps; comprimida ≤ 1 byte/px
+    const carga = ktx
+      ? comprimida(base + '.ktx2').catch((err)=>{ console.warn('[tenis] KTX2 → JPEG', base, err); return imagen(base + '.jpg', true); })
+      : imagen(base + '.jpg', true);
+    e.promesa = carga.then((t)=>{
       if(z.tex[k] !== e){ desechar(t); throw new Error('ya no se necesita'); }
       e.t = t;
       return e;
