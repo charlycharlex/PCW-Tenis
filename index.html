@@ -958,13 +958,21 @@ function arrancar(){
   const mm = gsap.matchMedia();
   mm.add('(max-width: 767px)', ()=> construirRecorrido(true));
   mm.add('(min-width: 768px)', ()=> construirRecorrido(false));
+  // Tono oscuro si CUALQUIER sección oscura está activa. Dos paradas de marca seguidas se traslapan un
+  // momento (la siguiente empieza antes de que termine la anterior): cuando cada una ponía o quitaba el
+  // tono por su cuenta, la que terminaba lo quitaba aunque la siguiente siguiera activa, y 9 de las 14
+  // paradas de marca quedaban en claro.
+  const oscuras = [];
+  const aplicarTono = ()=>{
+    const oscuro = oscuras.some(st => st.isActive);
+    tonoOscuro.forEach(el => el.classList.toggle('tono-oscuro', oscuro));
+  };
   secciones.forEach((sec)=>{
     const texto = sec.querySelector('.texto');
     ScrollTrigger.create({trigger: sec, start: 'top 65%', end: 'bottom 35%',
       onToggle: (st)=> texto.classList.toggle('visible', st.isActive)});
     if(sec.dataset.tono === 'oscuro'){
-      ScrollTrigger.create({trigger: sec, start: 'top 55%', end: 'bottom 45%',
-        onToggle: (st)=> tonoOscuro.forEach(el => el.classList.toggle('tono-oscuro', st.isActive))});
+      oscuras.push(ScrollTrigger.create({trigger: sec, start: 'top 55%', end: 'bottom 45%', onToggle: aplicarTono}));
     }
   });
   crearHotspots();
