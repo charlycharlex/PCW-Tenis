@@ -1,0 +1,22 @@
+Librerías y fuentes servidas desde el propio sitio (antes venían de jsDelivr, cdnjs y Google Fonts).
+
+Por qué: un solo origen (sin conexiones extra a tres CDNs antes de la primera imagen), funciona con
+la Content-Security-Policy del sitio de la agencia sin abrir dominios externos, y no depende de que
+esos CDNs estén arriba. three va minificado (692 KB contra 1.3 MB del que se usaba).
+
+Para actualizar, bajar los mismos archivos de la versión nueva con la misma estructura de carpetas
+(los módulos de examples/jsm se importan entre sí con rutas relativas) y cambiar la versión en
+index.html (importmap, <script> de GSAP, rutas de Draco y Basis, <link rel="preload">).
+
+three.js r170 (MIT) ............ https://cdn.jsdelivr.net/npm/three@0.170.0/
+  build/three.module.min.js
+  examples/jsm/loaders/{GLTFLoader,DRACOLoader,KTX2Loader}.js     (minificados por jsDelivr: *.min.js)
+  examples/jsm/utils/{BufferGeometryUtils,WorkerPool}.js, math/ColorSpaces.js,
+  examples/jsm/libs/{ktx-parse.module,zstddec.module}.js
+  examples/jsm/libs/draco/gltf/{draco_wasm_wrapper.js,draco_decoder.wasm}   Draco (Apache 2.0)
+  examples/jsm/libs/basis/{basis_transcoder.js,basis_transcoder.wasm}       Basis Universal (Apache 2.0)
+GSAP 3.12.5 + ScrollTrigger (licencia estándar de GSAP, uso libre) ... https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/
+Fuentes (de Google Fonts, subconjuntos latin y latin-ext):
+  Manrope, variable 200–800 (SIL Open Font License 1.1)
+  Permanent Marker (Apache 2.0)
+  fuentes.css.txt: las reglas @font-face con los unicode-range de Google (ya están copiadas en index.html)
