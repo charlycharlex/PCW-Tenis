@@ -6,22 +6,31 @@ Landing para **Palmer Cooper Wallace** (agencia de marketing, https://palmercoop
 Cada vez que la agencia termina un proyecto, el cliente les firma unos tenis. La landing muestra
 esos tenis en 3D como una forma innovadora de enseñar con qué marcas han trabajado.
 
-- **5 pares = 10 tenis**, escaneados en 3D (fotogrametría). Orden del recorrido (pedido por el
-  equipo): **verde, rosa, azul, plateado, negro**.
-- Solo importan las firmas de **las marcas grandes** (14, ver abajo); el resto de mensajes es textura.
+- **5 pares = 10 tenis**, escaneados en 3D (fotogrametría). Orden y nombres (documento de Pablo, de
+  la agencia, 2026-10-27): **rosa = Seducción, verde = Inteligencia, plateado/espejo = Consumidor,
+  azul = Conquista, negro = Hasta la muerte**. El rosa va primero: es el primero y el más icónico.
+  El **negro está oculto** (`"oculto": true`): Pablo recomienda no mostrarlo hasta volver a escanearlo
+  con los proyectos que le faltan (y hacer lo mismo con cada par nuevo).
+- Solo importan las firmas de **las marcas grandes** (13 visibles, ver abajo); el resto es textura.
 - Referencia de interacción: https://www.eathungrytiger.com/ — el objeto 3D se anima conforme
   se hace scroll; además se puede **girar cada tenis 360°**.
 
 Precedente propio: la landing de EzEat (`C:\Users\charl\Documents\Landingezeat`), mismo stack.
 
-## Estado actual (2026-10-23)
+## Estado actual (2026-11-03)
 
-**Los 10 tenis listos, auditoría de rendimiento hecha y verificada.** Publicado en GitHub Pages
+**Los 10 tenis listos (8 visibles), auditoría de rendimiento hecha y verificada, fichas con los
+proyectos reales** (documento de Pablo). Publicado en GitHub Pages
 (https://charlycharlex.github.io/PCW-Tenis/) solo cuando el equipo lo pide: el repo es público.
 
 Pendiente:
-- Los datos de cada ficha (proyecto, año, texto): hoy sale "Datos de ejemplo…". Lo pasa la agencia.
-- Decidir si UP se marca también en el plateado (en la suela del izquierdo firma "Cecilia /UP/").
+- La dirección del sitio de Wallace & Grey para el link en la ficha de Gentera (`"enlaces"` en el
+  JSON; vacío = sin link). `wallaceandgrey.com` existe pero solo dice "Próximo lanzamiento".
+- Pablo va a mandar clientes que faltan, con el tenis al que pertenecen (hay que ubicar sus firmas).
+- Confirmar con Pablo que el "Amarillo" de su orden es el par verde (así se tomó).
+- Decidir si UP se marca también en el plateado (en la suela del izquierdo firma "Cecilia /UP/";
+  Pablo solo la pone en el azul).
+- Volver a escanear el par negro cuando tenga sus proyectos (Tec de Monterrey se queda en los datos).
 - Probar en celulares reales, sobre todo un iPhone (todo lo demás se probó en Chrome y WebKit
   automatizados, ver Pruebas).
 - Confirmar con la agencia el permiso para nombrar clientes y mostrar las dedicatorias.
@@ -29,15 +38,25 @@ Pendiente:
 ### Datos y recorrido
 - Todo sale del bloque JSON `#datos-tenis` de `index.html`: portada (= par 1) → por cada par, una
   parada de presentación + una por cada firma de marca → colección. Cambiar el orden, agregar un par
-  o una firma es editar ese JSON; secciones, numeración ("Firma N de 14"), poses, hotspots, colección
-  y modo explorar salen solos. **Si cambia el primer par, cambiar también las precargas del `<head>`.**
-- Firmas destacadas (14): Nescafé Dolce Gusto y Lucha Libre (verde izq.), Mondelēz y Santa Clara
-  (verde der.), Bimbo, Lyncott y Tequila Altos (rosa der.), Gentera y UP (azul izq.), Elemental (azul
-  der.), Coca-Cola, Sanfer y Heineken (plateado izq.), Tec de Monterrey (negro der.). Sin firma
-  destacada: rosa izq., negro izq., plateado der.
+  o una firma es editar ese JSON; secciones, numeración ("Firma N de 13 · año"), poses, hotspots,
+  colección y modo explorar salen solos. Un par con `"oculto": true` desaparece de todo (página,
+  colección, explorar, respaldo) sin borrar sus datos. **Si cambia el primer par, cambiar también las
+  precargas del `<head>`.**
+- Cada par: `nombre` (Seducción…) se muestra en su parada, en cada firma ("Seducción · tenis derecho"),
+  en explorar y en la portada; `color` da el "El par rosa".
+- Firmas, en orden del recorrido (dentro de cada par por año; a igual año, el orden del documento):
+  Seducción: Lyncott 2022, Tequila Altos (Pernod Ricard) 2022, Bimbo (Barcel) 2023 — rosa der.
+  Inteligencia: Nescafé Dolce Gusto 2023 y Lucha Libre AAA 2023 (verde izq.), Santa Clara 2023 y
+  Mondelēz 2024 (verde der.). Consumidor: Coca-Cola, Sanfer, Heineken 2024 (plateado izq.).
+  Conquista: Gentera 2025–2026 y UP 2025 (azul izq.), Elemental (PiSA) 2026 (azul der.). Oculta con
+  su par: Tec de Monterrey (negro der.). Sin firma destacada: rosa izq., plateado der., negro izq.
+- Ficha: año, marca, `grupo` (empresa detrás, opcional), la firma tal cual (se queda: Pablo la quiere
+  como contexto), título del proyecto y `texto` (un párrafo por elemento; textos del documento de
+  Pablo con acentos corregidos). Con mucho texto la ficha hace scroll por dentro.
 - Interacción: el arrastre horizontal gira el tenis bajo el dedo (regresa solo). "Explorar en 360°":
-  un tenis a la vez, flechas/PageUp/PageDown, giro en 2 ejes, pellizco/rueda. En la colección, tocar
-  un tenis lo abre en explorar. La ficha acerca la cámara a la firma (y ahí sí usa 4K).
+  un tenis a la vez, flechas/PageUp/PageDown, giro en 2 ejes, pellizco/rueda. Cada tenis aparece en
+  3/4 de su costado exterior (`giroExp`), salvo al entrar desde la parada de una de sus marcas, que
+  conserva ese ángulo. En la colección, tocar un tenis lo abre en explorar. La ficha acerca la cámara a la firma (y ahí sí usa 4K).
 - La cámara nunca baja del horizonte (`inclFrente` ≥ .02, en explorar `inclUsuario` ≥ -.12): ningún
   escaneo tiene una cara de abajo presentable.
 - Medición opcional: abrir ficha/explorar dispara `tenis:ficha` / `tenis:explorar` en `document` y,
@@ -123,8 +142,8 @@ Servir la carpeta (abrir el archivo directo no funciona: `fetch` de los modelos)
 python pruebas\servidor_gzip.py . 8126        (comprime como GitHub Pages)
 "C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe" -m http.server 8123
 ```
-`?debug`: en Explorar, clic sobre una firma → imprime `punto` y `normal` para el JSON (por eso en debug
-tocar un tenis de la colección no lo abre). `tenisDebug.vista(id, giro, incl, zoom)`, `puntoEn(x, y)`,
+`?debug`: en Explorar, clic sobre una firma → imprime `punto` y `normal` para el JSON (solo en explorar: en
+la colección tocar un tenis lo abre, también en debug). `tenisDebug.vista(id, giro, incl, zoom)`, `puntoEn(x, y)`,
 `renderer.info.render.frame` (cuadros dibujados). Convención: la punta de todos va hacia +Z (giro 0 =
 punta a la cámara); el costado exterior del derecho es -X (giro +π/2), el del izquierdo +X (-π/2).
 
