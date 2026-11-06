@@ -4,7 +4,7 @@ import sys, json
 import os
 from playwright.sync_api import sync_playwright
 os.makedirs('capturas', exist_ok=True)
-URL = 'http://127.0.0.1:8126/?debug'
+URL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8126/?debug'   # ?debug&repisas: la opción con repisas
 ok = lambda c, t: print(('  OK   ' if c else '  FALLA') + ' ' + t)
 with sync_playwright() as p:
     nav = p.chromium.launch(channel='chrome', headless=True, args=['--enable-gpu'])

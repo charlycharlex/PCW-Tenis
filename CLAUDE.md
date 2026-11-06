@@ -57,6 +57,19 @@ Pendiente:
   un tenis a la vez, flechas/PageUp/PageDown, giro en 2 ejes, pellizco/rueda. Cada tenis aparece en
   3/4 de su costado exterior (`giroExp`), salvo al entrar desde la parada de una de sus marcas, que
   conserva ese ángulo. En la colección, tocar un tenis lo abre en explorar. La ficha acerca la cámara a la firma (y ahí sí usa 4K).
+- **Repisas** (colección, idea del video de referencia "LAST DEPT."): cada tenis llega a su repisa según
+  el concepto del par (`"repisa"` en el JSON): `terciopelo` capitoné con neón rosa (Seducción), `libros`
+  (Inteligencia), `gondola` de súper con espejo y etiqueta "$∞ precio incalculable" (Consumidor), `podio`
+  con el 1 dorado (Conquista), `granito` con neón rojo (negro / cualquiera sin repisa). Sección 2b de
+  `index.html`: cajas y canvas, nada que bajar; hijas de `z.grupo` (viajan con el tenis, no giran). Crecen
+  a lo ancho al llegar, con el cursor encima el tenis se levanta y su neón se prende, y acompañan al tenis
+  elegido en explorar. Abajo de cada par, su nombre (`#rotulos`). La colección es de tono oscuro.
+  **Es una propuesta: hay dos opciones en el mismo archivo.** Sin nada, la colección de siempre (sin
+  repisas, tono claro); con `?repisas` en la dirección (o `data-repisas` en `#tenis`) la pared de
+  repisas, con el texto final chico y abajo; `?sin-repisas` la apaga. Todo lo de repisas depende de
+  `CON_REPISAS` / `html.con-repisas`. `medirPared()` acomoda la pared al espacio entre la barra y el texto
+  (lo mide: cambia con el ancho y el zoom). La rama `sin-repisas` guarda la versión anterior (4e8ef6a).
+  Las pruebas aceptan la dirección: `funcional.py|tono.py|ancho.py "http://127.0.0.1:8126/?debug&repisas"`.
 - La cámara nunca baja del horizonte (`inclFrente` ≥ .02, en explorar `inclUsuario` ≥ -.12): ningún
   escaneo tiene una cara de abajo presentable.
 - Medición opcional: abrir ficha/explorar dispara `tenis:ficha` / `tenis:explorar` en `document` y,
