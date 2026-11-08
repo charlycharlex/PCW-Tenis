@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Preview uses root repository assets; original published root remains unchanged. -->
+<base href="./">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCW — The Signature Archive · IMMVIS Concept B</title>
+<meta name="description" content="Cada proyecto que terminamos, el cliente nos lo firma en unos tenis. Gíralos en 3D y encuentra las marcas con las que hemos trabajado.">
+<link rel="icon" href="data:,"><!-- sin ícono propio: evita que el navegador pida /favicon.ico (404) -->
+
+<!-- Todo se sirve desde el propio sitio (vendor/, ver vendor/LEEME.txt): librerías, decodificadores y
+     fuentes. Precarga de lo que necesita el primer par, para que no espere a que el script lo pida.
+     SOLO en la página suelta: dentro de la landing de la agencia NO copiar estos <link>, porque ahí la
+     sección no baja nada hasta que el visitante se acerca (sección 3 del script). Si cambia el primer
+     par en los datos, cambiar aquí los .glb y .ktx2. La 2K solo se precarga donde seguro se va a usar:
+     en la portada el tenis mide .34 del ancho y pide 2K arriba de 520 px reales (UMBRAL, sección 4),
+     o sea ancho × densidad ≳ 1530 px más la barra de scroll. En una pantalla de 1366 px no se usaría. -->
+<!-- El importmap va antes de cualquier modulepreload: en cuanto el navegador empieza a bajar un módulo
+     ya no acepta mapas, y "three" no se podría resolver. -->
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three@0.170.0/build/three.module.min.js",
+    "three/addons/": "./vendor/three@0.170.0/examples/jsm/"
+} }
+</script>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fuentes/manrope-latin.woff2">
+<link rel="modulepreload" href="vendor/three@0.170.0/build/three.module.min.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/loaders/GLTFLoader.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/loaders/DRACOLoader.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/loaders/KTX2Loader.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/utils/BufferGeometryUtils.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/utils/WorkerPool.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/libs/ktx-parse.module.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/libs/zstddec.module.js">
+<link rel="modulepreload" href="vendor/three@0.170.0/examples/jsm/math/ColorSpaces.js">
+<link rel="preload" as="fetch" crossorigin href="vendor/three@0.170.0/examples/jsm/libs/draco/gltf/draco_wasm_wrapper.js">
+<link rel="preload" as="fetch" crossorigin href="vendor/three@0.170.0/examples/jsm/libs/draco/gltf/draco_decoder.wasm">
+<link rel="preload" as="fetch" crossorigin href="vendor/three@0.170.0/examples/jsm/libs/basis/basis_transcoder.js">
+<link rel="preload" as="fetch" crossorigin href="vendor/three@0.170.0/examples/jsm/libs/basis/basis_transcoder.wasm">
+<link rel="preload" as="fetch" crossorigin href="modelos/rosa_izq.glb">
+<link rel="preload" as="fetch" crossorigin href="modelos/rosa_der.glb">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/rosa_izq_1k.ktx2">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/rosa_der_1k.ktx2">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/rosa_izq_2k.ktx2" media="(min-width: 1560px), (min-width: 1250px) and (min-resolution: 1.25dppx), (min-width: 1040px) and (min-resolution: 1.5dppx), (min-width: 780px) and (min-resolution: 2dppx)" fetchpriority="low">
+<link rel="preload" as="fetch" crossorigin href="modelos/tex/rosa_der_2k.ktx2" media="(min-width: 1560px), (min-width: 1250px) and (min-resolution: 1.25dppx), (min-width: 1040px) and (min-resolution: 1.5dppx), (min-width: 780px) and (min-resolution: 2dppx)" fetchpriority="low">
+<style>
+  /* Fuentes propias (antes del CSS de Google Fonts, que bloqueaba el primer pintado). Manrope es
+     variable: un solo archivo por subconjunto para todos los pesos. latin-ext solo se baja si hace falta
+     (la "ē" de Mondelēz). */
+  @font-face{font-family:'Manrope'; font-style:normal; font-weight:400 800; font-display:swap;
+    src:url(vendor/fuentes/manrope-latin-ext.woff2) format('woff2'); unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:'Manrope'; font-style:normal; font-weight:400 800; font-display:swap;
+    src:url(vendor/fuentes/manrope-latin.woff2) format('woff2'); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  @font-face{font-family:'Permanent Marker'; font-style:normal; font-weight:400; font-display:swap;
+    src:url(vendor/fuentes/permanent-marker-latin.woff2) format('woff2'); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  /* colores tomados de palmercooperwallace.com */
+  :root{
+    --papel:#ECEBE9;
+    --tinta:#1C1D20;
+    --tinta-suave:#5E6068;
+    --marino:#0B1427;
+    --magenta:#D8006B;
+    --linea:rgba(28,29,32,.14);
+    --fondo:var(--papel);
+    --texto:var(--tinta);
+    --texto-suave:var(--tinta-suave);
+  }
+  /* el tono oscuro se aplica solo al bloque de los tenis (y a su barra en la versión suelta),
+     nunca al <body>: dentro del sitio de la agencia no debe teñir el resto de su página */
+  .tono-oscuro{
+    --fondo:var(--marino);
+    --texto:#F3F2EF;
+    --texto-suave:#A9AEBD;
+    --linea:rgba(255,255,255,.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  /* scrollbar-gutter: al abrir una ficha o explorar se bloquea el scroll (html.bloqueado) y, con barra
+     clásica (Windows), la barra desaparece: la página se ensanchaba 15 px, el lienzo se redimensionaba
+     y el tenis brincaba. Así el espacio de la barra se queda reservado. */
+  html{background:var(--papel); scrollbar-gutter:stable;}
+  body{background:var(--papel); color:var(--tinta); font-family:'Manrope',system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
+  #tenis{position:relative; background:var(--fondo); color:var(--texto); transition:background-color .7s ease, color .7s ease;}
+  /* mientras el panel de una marca o el modo explorar están abiertos, la página no hace scroll.
+     Solo en <html>: si el <body> también lleva overflow:hidden se vuelve contenedor de scroll y el
+     escenario (sticky) se queda arriba, fuera de la vista */
+  html.bloqueado{overflow:hidden;}
+
+  /* #tenis es una sección autocontenida: puede ser la página entera o ir dentro de otra más larga
+     (la landing de la agencia). El escenario (lienzo + hotspots) se queda pegado arriba mientras
+     se recorre la sección, y el texto pasa por encima: el scroll mueve la cámara, no el lienzo. */
+  .escenario{position:sticky; top:0; height:100vh; height:100svh; z-index:1;}
+  /* pan-y deja al navegador el scroll vertical en táctil y nos da el arrastre horizontal para girar */
+  #escena{position:absolute; inset:0; width:100%; height:100%; display:block;
+          touch-action:pan-y; cursor:grab; outline:none;}
+  #escena.arrastrando{cursor:grabbing;}
+  #escena.senalando{cursor:pointer;}
+  /* modo explorar: el lienzo pasa a pantalla completa sin sacar al escenario del flujo (no mueve el scroll) */
+  html.explorando .escenario{z-index:30;}
+  html.explorando #escena, html.explorando #hotspots{position:fixed; inset:0; touch-action:none;}
+  html.explorando #escena{background:var(--fondo);}
+
+  header.barra{position:fixed; top:0; left:0; right:0; z-index:40; display:flex; align-items:center;
+    justify-content:space-between; padding:20px clamp(16px,4vw,48px); pointer-events:none;}
+  header.barra > *{pointer-events:auto;}
+  .marca{font-weight:800; font-size:15px; letter-spacing:.01em; color:var(--texto); text-decoration:none;
+         transition:color .7s ease;}
+  .marca small{display:block; font-weight:500; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+               color:var(--texto-suave); margin-top:2px;}
+  .boton{font:inherit; font-size:14px; font-weight:700; border:0; cursor:pointer; border-radius:999px;
+         padding:12px 20px; background:var(--magenta); color:#fff; text-decoration:none; display:inline-flex;
+         align-items:center; gap:8px; transition:transform .2s ease, background-color .2s ease;}
+  .boton:hover{transform:translateY(-1px); background:#B8005B;}
+  .hotspot:focus-visible{outline:none;}
+  .hotspot:focus-visible .nombre, .boton:focus-visible, .cerrar:focus-visible, .chip:focus-visible,
+  .explorar-nav button:focus-visible{outline:3px solid var(--magenta); outline-offset:3px;}
+  .boton.fantasma{background:color-mix(in srgb, var(--fondo) 75%, transparent); backdrop-filter:blur(6px); color:var(--texto); box-shadow:inset 0 0 0 1.5px var(--linea);}
+  .boton.fantasma:hover{background:rgba(127,127,127,.1);}
+
+  /* ---------- recorrido con scroll ---------- */
+  /* las secciones no atrapan el puntero: así el arrastre sobre el tenis llega al lienzo */
+  main{position:relative; z-index:2; pointer-events:none; transition:opacity .4s ease;
+       margin-top:-100vh; margin-top:-100svh;}
+  html.explorando main, html.enfocado main{opacity:0;}
+  html.explorando main *, html.enfocado main *{pointer-events:none !important;}
+  .paso{min-height:100vh; min-height:100svh; display:flex; align-items:center;
+        padding:96px clamp(16px,6vw,96px);}
+  .paso[data-lado="der"]{justify-content:flex-end;}
+  .paso[data-lado="centro"]{justify-content:center; align-items:flex-end; text-align:center;}
+  .texto{max-width:440px; pointer-events:auto; opacity:0; transform:translateY(24px);
+         transition:opacity .8s ease, transform .8s ease;}
+  .texto.visible{opacity:1; transform:none;}
+  .etiqueta{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--magenta);
+            margin-bottom:16px; display:block;}
+  h1{font-size:clamp(38px,5.4vw,72px); line-height:1.02; font-weight:800; letter-spacing:-.025em;}
+  h2{font-size:clamp(30px,3.6vw,48px); line-height:1.06; font-weight:800; letter-spacing:-.02em;}
+  h1 em, h2 em{font-style:normal; color:var(--magenta);}
+  .texto p{margin-top:18px; font-size:17px; line-height:1.55; color:var(--texto-suave);}
+  .texto .acciones{margin-top:26px; display:flex; gap:10px; flex-wrap:wrap;}
+  .paso[data-lado="centro"] .acciones{justify-content:center;}
+  .pista{margin-top:26px; font-size:13px; color:var(--texto-suave); display:flex; align-items:center; gap:10px;}
+  .paso[data-lado="centro"] .pista{justify-content:center;}
+  .pista svg{flex:none;}
+  .cifras{display:flex; gap:28px; margin-top:24px; justify-content:center;}
+  /* con repisas, el texto de la colección va chico y abajo: el foco son los tenis */
+  html.con-repisas .paso[data-tipo="coleccion"]{padding-bottom:24px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .texto{max-width:none;}
+  html.con-repisas .paso[data-tipo="coleccion"] .etiqueta{margin-bottom:6px; font-size:11px;}
+  html.con-repisas .paso[data-tipo="coleccion"] h2{font-size:clamp(19px,1.7vw,24px); letter-spacing:-.01em;}
+  html.con-repisas .paso[data-tipo="coleccion"] .cifras{margin-top:6px; gap:4px 16px; flex-wrap:wrap;}
+  html.con-repisas .paso[data-tipo="coleccion"] .cifras div{display:flex; align-items:baseline; gap:5px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .cifras b{display:inline; font-size:14px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .cifras span{font-size:12px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .acciones{margin-top:10px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .boton{padding:9px 16px; font-size:13px;}
+  html.con-repisas .paso[data-tipo="coleccion"] .pista{margin-top:8px; font-size:12px;}
+  .cifras b{display:block; font-size:34px; font-weight:800; color:var(--texto);}
+  .cifras span{font-size:13px; color:var(--texto-suave);}
+
+  /* parada de un par: las marcas que trae, como atajos */
+  .chips{margin-top:22px; display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:0; border-radius:999px;
+        padding:8px 14px; color:var(--texto); background:color-mix(in srgb, var(--texto) 8%, transparent);
+        transition:background-color .2s ease;}
+  .chip:hover{background:color-mix(in srgb, var(--magenta) 18%, transparent);}
+  /* parada de una marca: el nombre grande y la firma tal como se escribió, con trazo de plumón */
+  .paso[data-tipo="marca"] h2{font-size:clamp(36px,4.6vw,64px);}
+  .firma-cita{margin-top:20px; font-family:'Permanent Marker','Manrope',cursive; font-size:clamp(20px,2vw,26px);
+              line-height:1.3; color:var(--texto); transform:rotate(-1.5deg); transform-origin:left;}
+  .firma-cita::before{content:'“';} .firma-cita::after{content:'”';}
+  /* La firma se escribe de izquierda a derecha cuando aparece su sección. Antes era un clip-path
+     animado: el navegador repintaba el texto de plumón en cada cuadro (medido: ~5 cuadros perdidos por
+     recorrido). Ahora es una "ventana" (overflow:hidden) que entra desde la izquierda mientras el texto
+     de adentro se mueve exactamente al revés: el texto se queda quieto y la ventana lo va descubriendo.
+     Son dos transform con la misma curva: la GPU los mueve sin repintar. El padding del span es la
+     holgura para los trazos que se salen de la caja (el margen negativo lo compensa). */
+  .paso .firma-cita{overflow:hidden; margin-left:-.35em; margin-right:-.35em;
+                    transform:rotate(-1.5deg) translateX(-101%); transition:transform 1.2s cubic-bezier(.6,0,.25,1) .35s;}
+  .paso .firma-cita > span{display:block; padding:.25em .35em;
+                           transform:translateX(101%); transition:transform 1.2s cubic-bezier(.6,0,.25,1) .35s;}
+  .paso .texto.visible .firma-cita{transform:rotate(-1.5deg);}
+  .paso .texto.visible .firma-cita > span{transform:none;}
+  .paso .firma-cita::before, .paso .firma-cita::after{content:none;}
+  .paso .firma-cita > span::before{content:'“';} .paso .firma-cita > span::after{content:'”';}
+  .donde{margin-top:14px; font-size:13px; color:var(--texto-suave); letter-spacing:.02em;}
+  /* en la portada: el nombre del primer par */
+  .par-portada{margin-top:22px; display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; font-size:13px; color:var(--texto-suave);}
+  .par-portada b{font-size:15px; color:var(--magenta); letter-spacing:.02em;}
+
+  /* ---------- hotspots sobre las firmas ---------- */
+  /* overflow:hidden: una etiqueta invisible se queda donde la dejó su tenis al salir de cuadro (fuera de
+     la pantalla, a la derecha) y ensanchaba la página: scroll horizontal en escritorio y, en celular, el
+     navegador alejaba la vista y el encabezado fijo se desacomodaba (17 de 20 paradas) */
+  #hotspots{position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden;}
+  /* el nombre de cada par bajo su repisa, en la colección (mismo recorte que #hotspots) */
+  #rotulos{position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden;}
+  html.explorando #rotulos{display:none;}
+  .rotulo{position:absolute; left:0; top:0; opacity:0; white-space:nowrap; text-align:center; will-change:transform,opacity;
+          font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--texto-suave);
+          transition:color .3s ease;}
+  .rotulo small{display:block; font-size:9.5px; font-weight:700; letter-spacing:.22em; opacity:.65; margin-bottom:3px;}
+  .rotulo::after{content:''; display:block; height:2px; width:18px; margin:7px auto 0; border-radius:2px;
+                 background:var(--acento); box-shadow:0 0 10px var(--acento); transition:width .35s ease;}
+  .rotulo.activo{color:var(--texto);}
+  .rotulo.activo::after{width:100%;}
+  /* el origen del botón es el punto 3D: un anillo hueco marca la firma sin taparla y la
+     etiqueta queda arriba, unida por una línea guía */
+  .hotspot{position:absolute; left:0; top:0; width:0; height:0; border:0; padding:0; background:none;
+           cursor:pointer; font:inherit; opacity:0; pointer-events:none; will-change:transform,opacity;}
+  .hotspot.activo > *{pointer-events:auto;}
+  .hotspot > *{position:absolute; pointer-events:none;}
+  .hotspot .anillo{left:-9px; top:-9px; width:18px; height:18px; border-radius:50%;
+                   border:2.5px solid var(--magenta); box-shadow:0 0 0 2px rgba(255,255,255,.8);}
+  /* el latido solo corre en la etiqueta visible: una animación infinita en las 14 (aun invisibles)
+     tenía al navegador recalculando estilos 60 veces por segundo con la página quieta */
+  .hotspot .anillo::after{content:''; position:absolute; inset:-5px; border-radius:50%;
+                          border:2px solid var(--magenta); opacity:0;}
+  .hotspot.activo .anillo::after{animation:latido 1.8s ease-out infinite;}
+  @keyframes latido{from{transform:scale(.8); opacity:.9;} to{transform:scale(2); opacity:0;}}
+  .hotspot .guia{left:-1px; bottom:9px; width:2px; height:34px; background:var(--magenta);}
+  .hotspot .anillo{transform:scale(calc(.4 + .6 * var(--e, 1)));}
+  .hotspot .guia{transform-origin:bottom; transform:scaleY(var(--e, 1));}
+  .hotspot .nombre{bottom:43px; left:0; transform:translateX(-50%) translateY(calc(10px - 10px * var(--e, 1))) scale(calc(.75 + .25 * var(--e, 1))); white-space:nowrap;
+                   background:var(--magenta); color:#fff; font-size:12px; font-weight:800; letter-spacing:.08em;
+                   padding:7px 12px; border-radius:999px; box-shadow:0 6px 18px rgba(216,0,107,.35);
+                   transition:transform .2s ease;}
+  .hotspot .nombre::after{content:' +'; font-weight:600;}
+  .hotspot:hover .nombre{transform:translateX(-50%) scale(1.06);}
+  .hotspot .nombre{transition:none;}
+
+  /* ---------- panel de la marca ---------- */
+  #panel{position:fixed; z-index:45; top:50%; right:clamp(16px,4vw,48px); width:min(420px,calc(100vw - 32px));
+         max-height:calc(100svh - 48px); overflow-y:auto; overscroll-behavior:contain;
+         transform:translate(calc(100% + 60px),-50%); transition:transform .55s cubic-bezier(.2,.8,.2,1);
+         background:#fff; color:var(--tinta); border-radius:22px; padding:28px;
+         box-shadow:0 24px 60px rgba(11,20,39,.22);}
+  #panel.abierto{transform:translate(0,-50%);}
+  #panel .etiqueta{margin-bottom:10px;}
+  #panel h3{font-size:34px; font-weight:800; letter-spacing:-.01em; line-height:1.05; padding-right:30px;}
+  #panel .firma-cita{font-size:19px; margin-top:14px; color:var(--tinta);}
+  #panel .grupo{margin-top:6px; font-size:13px; font-weight:600; color:var(--tinta-suave);}
+  #panel .grupo:empty{display:none;}
+  #panel h4{margin-top:18px; font-size:16px; font-weight:800; line-height:1.3;}
+  #panel h4:empty{display:none;}
+  #panel .cuerpo p{margin-top:12px; font-size:14.5px; line-height:1.55; color:var(--tinta-suave);}
+  #panel .cuerpo a{color:var(--magenta); font-weight:700;}
+  #panel .nota{margin-top:18px; font-size:12px; padding:10px 12px; border-radius:10px; background:#FFF1F7; color:#8A0045;}
+  #panel .nota:empty{display:none;}
+  .cerrar{position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:0;
+          background:#F1F0EE; cursor:pointer; font-size:18px; line-height:1; color:var(--tinta);}
+
+  /* ---------- modo explorar ---------- */
+  #explorar-ui{position:fixed; z-index:42; left:0; right:0; bottom:24px; display:flex; flex-direction:column;
+               align-items:center; gap:12px; opacity:0; pointer-events:none; transition:opacity .4s ease; padding:0 16px;}
+  html.explorando #explorar-ui{opacity:1; pointer-events:auto;}
+  html.enfocado #explorar-ui{opacity:0; pointer-events:none;}
+  .explorar-nav{display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.88); backdrop-filter:blur(10px);
+                -webkit-backdrop-filter:blur(10px); border-radius:999px; padding:6px; color:var(--tinta);
+                box-shadow:0 10px 30px rgba(11,20,39,.14);}
+  .explorar-nav button{width:44px; height:44px; border-radius:50%; border:0; cursor:pointer; background:#F1F0EE;
+                       color:var(--tinta); font-size:20px; display:grid; place-items:center;}
+  .explorar-nav button:hover{background:#E4E2DF;}
+  .exp-nombre{min-width:190px; text-align:center; line-height:1.2;}
+  .exp-nombre b{display:block; font-size:15px;}
+  .exp-nombre span{font-size:12px; color:var(--tinta-suave);}
+  #explorar-ui .pista{margin:0; font-size:12px; color:var(--texto-suave);}
+  #explorar-ui .salir{position:fixed; top:20px; right:clamp(16px,4vw,48px);}
+
+  /* ---------- cargando / sin 3D ---------- */
+  #cargando{position:absolute; inset:0; z-index:5; background:var(--papel); display:flex; flex-direction:column;
+            align-items:center; justify-content:center; gap:14px; transition:opacity .6s ease;}
+  #cargando.oculto{opacity:0; pointer-events:none;}
+  #cargando .barra-progreso{width:160px; height:3px; border-radius:3px; background:var(--linea); overflow:hidden;}
+  #cargando .barra-progreso i{display:block; height:100%; width:0; background:var(--magenta); transition:width .2s ease;}
+  #cargando span{font-size:13px; color:var(--tinta-suave); text-align:center; max-width:280px;}
+  #respaldo{display:none; position:absolute; inset:0; padding:90px 4vw 0 46vw; pointer-events:none;
+            grid-template-columns:repeat(2,1fr); align-content:center; gap:8px 18px;}
+  /* una fila por par (--filas lo pone el script con el número de pares) */
+  #respaldo img{width:100%; height:calc((100svh - 140px) / var(--filas, 5)); object-fit:contain;}
+  html.sin3d #respaldo{display:grid;}
+  html.sin3d #escena, html.sin3d #hotspots, html.sin3d [data-requiere-3d]{display:none !important;}
+  /* ?incrustado: la página vive dentro del sitio de la agencia, que ya trae su propia barra */
+  html.incrustado header.barra{display:none;}
+
+  /* ---------- celular: el tenis arriba, el texto abajo ---------- */
+  @media (max-width:767px){
+    .paso, .paso[data-lado="der"], .paso[data-lado="centro"]{justify-content:center; align-items:flex-end;
+          padding:96px 16px 32px;}
+    /* sin backdrop-filter: encima del lienzo, que se redibuja en cada cuadro del scroll, el teléfono
+       tendría que volver a desenfocar todo lo que hay detrás de la tarjeta en cada cuadro. Casi opaca,
+       se ve igual. */
+    .texto{max-width:none; width:100%; background:color-mix(in srgb, var(--fondo) 93%, transparent);
+           padding:22px; border-radius:20px;
+           transition:opacity .8s ease, transform .8s ease, background-color .7s ease;}
+    .texto p{font-size:15px;}
+    .paso[data-tipo="marca"] h2{font-size:36px;}
+    html.con-repisas .paso[data-tipo="coleccion"]{padding-bottom:16px;}
+    html.con-repisas .paso[data-tipo="coleccion"] .texto{padding:12px 16px; background:none;}
+    html.con-repisas .paso[data-tipo="coleccion"] h2{font-size:19px;}
+    .rotulo{font-size:10px;}
+    .rotulo small{display:none;}
+    .rotulo::after{margin-top:5px;}
+    .firma-cita{font-size:19px;}
+    .chips{margin-top:16px;}
+    .marca small{display:none;}
+    #panel{top:auto; bottom:16px; right:16px; transform:translateY(calc(100% + 40px)); max-height:58svh; padding:24px 22px;}
+    #panel h3{font-size:28px;}
+    #panel.abierto{transform:none;}
+    .exp-nombre{min-width:0; flex:1;}
+    .explorar-nav{width:100%; max-width:420px;}
+    #respaldo{padding:80px 16px 0; align-content:start;}
+    #respaldo img{height:calc(50svh / var(--filas, 5));}
+  }
+  /* pantallas táctiles: los botones fijos que flotan sobre el lienzo, sin desenfoque (mismo motivo) */
+  @media (max-width:767px), (pointer:coarse){
+    .boton.fantasma{backdrop-filter:none; -webkit-backdrop-filter:none; background:color-mix(in srgb, var(--fondo) 92%, transparent);}
+    .explorar-nav{backdrop-filter:none; -webkit-backdrop-filter:none; background:rgba(255,255,255,.96);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001s !important; transition-duration:.2s !important;}
+  }
+</style>
+<style id="immvis-concept-b">
+
+/* IMMVIS / SIGNATURE ARCHIVE — alternative editorial direction */
+:root{--papel:#f0ece3;--tinta:#211f1d;--tinta-suave:#625e57;--marino:#191b1c;--magenta:#cb164c;--linea:rgba(33,31,29,.20);--fondo:var(--papel);--texto:var(--tinta);--texto-suave:var(--tinta-suave)}
+.tono-oscuro{--fondo:#17191b;--texto:#f4efe5;--texto-suave:#b4b2ae;--linea:rgba(244,239,229,.24)}
+html,body{background:#f0ece3}
+#tenis{background:var(--fondo)}
+header.barra{padding:26px clamp(24px,3.8vw,68px);align-items:flex-start;gap:20px}
+header.barra::after{content:"PCW / THE SIGNATURE ARCHIVE";position:absolute;top:86px;left:clamp(24px,3.8vw,68px);font:700 9px/1.4 'Manrope',sans-serif;letter-spacing:.2em;opacity:.58;color:var(--texto);pointer-events:none}
+.marca{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.045em;font-size:clamp(20px,2.2vw,29px);line-height:.93;max-width:220px}
+.marca small{font-family:'Manrope',sans-serif;letter-spacing:.24em;font-size:8px;font-weight:700;margin-top:12px}
+.boton{border-radius:0!important;padding:13px 20px;letter-spacing:.08em;text-transform:uppercase;font-size:10px;font-weight:800;border:1px solid currentColor;transition:background .3s,color .3s,transform .3s}
+.boton.fantasma{background:transparent;backdrop-filter:none;box-shadow:none;color:var(--texto)}
+.boton.fantasma:hover{background:var(--texto);color:var(--fondo)}
+.paso{padding:110px clamp(24px,9vw,156px) 72px;align-items:flex-end}
+.paso[data-lado="der"]{align-items:center}
+.paso[data-lado="centro"]{padding-bottom:78px}
+.texto{max-width:530px;transform:translateY(35px)}
+.etiqueta{font-size:10px;letter-spacing:.25em;margin-bottom:24px;font-weight:800;color:var(--magenta)}
+h1,h2,.paso[data-tipo="marca"] h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.068em;line-height:.88;text-wrap:balance}
+h1{font-size:clamp(64px,8.3vw,143px)}
+h2{font-size:clamp(49px,6.2vw,99px)}
+.paso[data-tipo="marca"] h2{font-size:clamp(51px,7.4vw,115px)}
+h1 em,h2 em{color:var(--magenta);font-style:italic}
+.texto p{max-width:390px;font-size:14px;line-height:1.8;letter-spacing:.01em;margin-top:27px}
+.texto .acciones{margin-top:32px}
+.pista{font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-top:35px}
+.paso[data-lado="centro"] .texto{max-width:720px}
+.cifras{gap:34px;margin-top:25px}
+.cifras b{font-family:Georgia,serif;font-size:45px;font-weight:400}
+.cifras span{font-size:10px;text-transform:uppercase;letter-spacing:.1em}
+.chips{gap:7px;margin-top:26px}
+.chip{border-radius:0;border:1px solid var(--linea);font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:9px 12px;background:transparent}
+.chip:hover{background:var(--magenta);color:#fff}
+.hotspot .nombre{background:var(--texto);color:var(--fondo);border-radius:0;font-size:10px;letter-spacing:.1em;box-shadow:none;padding:10px 12px}
+.hotspot .anillo{border-color:var(--magenta);box-shadow:0 0 0 2px var(--fondo)}
+.hotspot .guia{background:var(--magenta)}
+.rotulo{letter-spacing:.21em;font-size:10px}
+.rotulo::after{border-radius:0;box-shadow:none;height:1px}
+#panel h3{font-family:Georgia,serif;letter-spacing:-.055em;font-weight:400}
+.archive-index{position:fixed;left:clamp(24px,3.8vw,68px);bottom:30px;z-index:5;pointer-events:none;color:var(--texto);display:flex;align-items:center;gap:13px;transition:opacity .25s ease}
+.archive-index .rule{display:block;width:32px;height:1px;background:currentColor}
+.archive-index span{font-size:9px;text-transform:uppercase;letter-spacing:.19em;font-weight:700}
+.archive-vertical{position:fixed;right:clamp(14px,2vw,38px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl;z-index:5;pointer-events:none;color:#7d7b76;font-size:9px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.archive-intro{position:absolute;z-index:3;left:clamp(24px,3.8vw,68px);top:50%;writing-mode:vertical-rl;transform:translateY(-50%) rotate(180deg);color:var(--texto-suave);pointer-events:none;font-size:9px;letter-spacing:.25em;text-transform:uppercase;opacity:.65}
+html.explorando .archive-index,html.enfocado .archive-index,html.explorando .archive-vertical,html.enfocado .archive-vertical{opacity:0}
+html.con-repisas .paso[data-tipo="coleccion"] h2{font-size:clamp(23px,2.8vw,38px);font-family:Georgia,serif}
+@media(min-width:1100px){.paso[data-lado="der"]{padding-right:clamp(50px,10vw,180px)}.paso[data-lado="der"] .texto{max-width:410px}}
+@media(max-width:767px){
+header.barra{padding:17px 16px}
+header.barra::after{top:73px;left:16px;font-size:7px}
+.marca{font-size:19px;max-width:155px}
+.marca small{font-size:7px;margin-top:6px;letter-spacing:.12em}
+header.barra .boton{padding:9px 11px;font-size:9px;max-width:145px;text-align:center}
+.archive-index{left:16px;bottom:12px}.archive-index span{font-size:7px}.archive-index .rule{width:16px}
+.archive-vertical,.archive-intro{display:none}
+.paso,.paso[data-lado="der"],.paso[data-lado="centro"]{padding:100px 15px 42px;align-items:flex-end}
+.texto{background:color-mix(in srgb,var(--fondo) 95%,transparent);border-radius:0;padding:21px 18px 22px;border-left:2px solid var(--magenta);width:100%;max-width:none}
+h1{font-size:clamp(48px,13vw,78px)}h2,.paso[data-tipo="marca"] h2{font-size:clamp(41px,11.5vw,68px)}
+.etiqueta{font-size:9px;letter-spacing:.18em;margin-bottom:12px}
+.texto p{font-size:12px;line-height:1.65;margin-top:17px}
+.texto .acciones{margin-top:18px}.pista{margin-top:17px;font-size:9px}
+.cifras{gap:13px}.cifras b{font-size:30px}.chip{font-size:9px;padding:7px 9px}
+html.con-repisas .paso[data-tipo="coleccion"] .texto{padding:14px 18px}
+}
+@media(prefers-reduced-motion:reduce){.texto{transform:none}}
+
+</style>
+</head>
+<body>
+<!-- IMMVIS alternative design: same existing models and tested interactions -->
+
+<div class="archive-index" aria-hidden="true"><i class="rule"></i><span>PCW / Vol. 01 — Objects of trust</span></div>
+<div class="archive-vertical" aria-hidden="true">Creative relationships, documented in ink · 2022—2026</div>
+<header class="barra">
+  <a class="marca" href="https://palmercooperwallace.com/">Palmer Cooper Wallace<small>Tenis firmados</small></a>
+  <button class="boton fantasma" type="button" data-explorar data-requiere-3d>Explorar en 360°</button>
+</header>
+
+<!-- Todo lo de los tenis vive en #tenis: para montarlo en otra página se copia este bloque
+     (más #panel, #explorar-ui, el bloque de datos y los scripts). -->
+<div id="tenis">
+<div class="escenario">
+<div class="archive-intro" aria-hidden="true">Objects with a story / PCW collection</div>
+  <div id="cargando" role="status" aria-live="polite">
+    <div class="barra-progreso"><i></i></div>
+    <span>Cargando los tenis…</span>
+  </div>
+  <canvas id="escena" tabindex="-1" aria-label="Tenis firmados en 3D. Arrastra para girarlos."></canvas>
+  <div id="respaldo"></div>
+  <div id="hotspots"></div>
+  <div id="rotulos" aria-hidden="true"></div>
+</div>
+
+<!-- Las secciones del recorrido se arman desde los datos de abajo: una portada, una parada por
+     par, una por cada firma de marca y el cierre con la colección. -->
+<main id="recorrido"></main>
+</div>
+
+<aside id="panel" role="dialog" aria-modal="false" aria-labelledby="panel-marca" hidden>
+  <button class="cerrar" type="button" aria-label="Cerrar">✕</button>
+  <span class="etiqueta" data-campo="anio">Proyecto</span>
+  <h3 id="panel-marca"></h3>
+  <div class="grupo" data-campo="grupo"></div>
+  <div class="firma-cita" data-campo="firma"></div>
+  <h4 data-campo="proyecto"></h4>
+  <div class="cuerpo" data-campo="texto"></div>
+  <div class="nota" data-campo="nota"></div>
+</aside>
+
+<div id="explorar-ui">
+  <div class="explorar-nav">
+    <button type="button" id="exp-ant" aria-label="Tenis anterior">←</button>
+    <div class="exp-nombre" aria-live="polite"><b></b><span></span></div>
+    <button type="button" id="exp-sig" aria-label="Tenis siguiente">→</button>
+  </div>
+  <div class="pista">Arrastra para girar · pellizca o usa la rueda para acercar · toca una etiqueta para ver el proyecto</div>
+  <button class="boton salir" type="button" id="salir-explorar">Volver al recorrido</button>
+</div>
+
+<!-- =====================================================================
+     DATOS. Lo único que hay que tocar para agregar un par o una firma.
+     - pares: en el orden en que aparecen. "tenis" son los archivos de modelos/ (sin extensión).
+       nombre: el nombre del par (Seducción, Inteligencia…); color: cómo se le dice al par.
+       "oculto": true lo saca de la página sin borrarlo (el negro, hasta que se vuelva a escanear).
+       repisa: en qué repisa queda en la colección (terciopelo, libros, gondola, podio, granito).
+     - marcas: las firmas a destacar, en el orden del recorrido dentro de su par (por año).
+       grupo: la empresa detrás de la marca, si aplica. texto: un párrafo por elemento.
+       enlaces: {"texto que aparece en el párrafo": "https://…"}; con la dirección vacía queda sin link.
+       punto / normal: dónde está la firma en el tenis. Para sacarlos: abrir la página con
+       ?debug, entrar a "Explorar", hacer clic sobre la firma y copiar lo que sale en consola.
+       proyecto / anio / texto: lo que sale en la ficha al tocar la marca (lo pasa la agencia).
+     ===================================================================== -->
+<script type="application/json" id="datos-tenis">
+{
+  "pares": [
+    {"id": "rosa", "nombre": "Seducción", "color": "rosa", "modelo": "Nike Dunk High × Ambush", "tenis": ["rosa_izq", "rosa_der"], "repisa": "terciopelo"},
+    {"id": "verde", "nombre": "Inteligencia", "color": "verde", "modelo": "Nike Dunk High × Ambush", "tenis": ["verde_izq", "verde_der"], "repisa": "libros"},
+    {"id": "plateado", "nombre": "Consumidor", "color": "espejo", "modelo": "", "tenis": ["plateado_izq", "plateado_der"], "cromo": true, "repisa": "gondola"},
+    {"id": "azul", "nombre": "Conquista", "color": "azul", "modelo": "", "tenis": ["azul_izq", "azul_der"], "repisa": "podio"},
+    {"id": "negro", "nombre": "Hasta la muerte", "color": "negro", "modelo": "", "tenis": ["negro_izq", "negro_der"], "oculto": true, "repisa": "granito"}
+  ],
+  "marcas": [
+    {"id": "lyncott", "tenis": "rosa_der", "marca": "Lyncott", "etiqueta": "LYNCOTT", "firma": "Lyncott", "punto": [0.0951, -0.1155, -0.3897], "normal": [0.923, 0.195, -0.333], "anio": "2022", "proyecto": "Relanzamiento y posicionamiento de marca | Creación de pipeline de innovación", "texto": ["Colaboramos con los equipos creativos y de liderazgo de Lyncott en el desarrollo de una nueva estrategia de marca, que dio vida a una nueva identidad renovada y al territorio de posicionamiento “SENSACIONAL”.", "Como resultado, logramos fortalecer el valor percibido de la marca, incrementar su presencia mediática y contribuir a un crecimiento significativo en awareness y ventas.", "Adicionalmente, participamos en el diseño de un pipeline de innovación para el desarrollo de nuevos productos, así como en la reconceptualización de su portafolio de marcas, dotándolo de mayor claridad, diferenciación y coherencia estratégica."]},
+    {"id": "altos", "tenis": "rosa_der", "marca": "Tequila Altos", "grupo": "Pernod Ricard", "etiqueta": "ALTOS", "firma": "AAAAAALTOS!!", "punto": [-0.1503, -0.2511, -0.2801], "normal": [-0.998, -0.055, -0.032], "anio": "2022", "proyecto": "Estrategia de posicionamiento de marca y desarrollo de conceptos creativos", "texto": ["Desarrollamos la estrategia de posicionamiento de Tequila Altos en el segmento premium del mercado mexicano, capitalizando los atributos distintivos del producto y la riqueza cultural de los Altos de Jalisco para construir una propuesta de marca auténtica, diferenciada y relevante para sus consumidores potenciales.", "Adicionalmente, conceptualizamos propuestas creativas para ediciones especiales orientadas a impulsar las ventas, fortaleciendo la conexión con los consumidores y asegurando su coherencia con la identidad y el nuevo posicionamiento de marca."]},
+    {"id": "bimbo", "tenis": "rosa_der", "marca": "Bimbo", "grupo": "Barcel", "etiqueta": "BIMBO", "firma": "Bimbo: gracias…", "punto": [0.1269, -0.0678, 0.0659], "normal": [0.969, 0.2, 0.146], "anio": "2023", "proyecto": "Proceso de innovación para Barcel", "texto": ["Colaboramos con el equipo de liderazgo de Barcel en el diseño y estructuración de un pipeline de innovación para guiar el desarrollo de nuevos productos de la marca.", "Como resultado, establecimos un proceso claro, estandarizado y alineado con los objetivos estratégicos de Barcel, sentando las bases para impulsar la innovación y el desarrollo de nuevos productos durante los próximos cinco años."]},
+    {"id": "nescafe", "tenis": "verde_izq", "marca": "Nescafé Dolce Gusto", "grupo": "Powered by Krups · Nestlé y Groupe SEB", "etiqueta": "NESCAFÉ", "firma": "NDG powered by KRUPS", "punto": [0.1006, -0.1718, 0.4011], "normal": [0.799, 0.478, 0.364], "anio": "2023", "proyecto": "Estrategia de posicionamiento para la sociedad entre Nescafé Dolce Gusto (Nestlé) y Krups (Groupe SEB)", "texto": ["Desarrollamos la estrategia de posicionamiento de Nescafé Dolce Gusto en México en colaboración con sus socios estratégicos, Nestlé y Groupe SEB, definiendo claramente el rol de cada uno dentro de la propuesta de valor de la marca: máquinas y cápsulas de café.", "Como resultado, construimos una estrategia integral que alineó la participación de ambas compañías, estableciendo el papel de sus productos dentro del portafolio de Nescafé y fortaleciendo su diferenciación y relevancia frente a los distintos segmentos de consumidores potenciales."]},
+    {"id": "luchalibre", "tenis": "verde_izq", "marca": "Lucha Libre AAA", "etiqueta": "LUCHA LIBRE AAA", "firma": "Gracias x acompañarnos a la BATALLA", "punto": [0.1262, 0.0414, -0.21], "normal": [0.994, -0.029, 0.109], "anio": "2023", "proyecto": "Estrategia de reconceptualización y relanzamiento tras la adquisición de la propiedad intelectual", "texto": ["Colaboramos con el fondo de inversión Fillip, tras la adquisición de la propiedad, en el desarrollo de una estrategia para resignificar la lucha libre mexicana, revalorizando su riqueza cultural como plataforma del entretenimiento pero llevándola al siglo XXI.", "Como resultado, contribuimos a sentar muchas de las bases conceptuales y estratégicas de un formato renovado, cuyo desarrollo culminó en la adquisición por parte de WWE."]},
+    {"id": "santaclara", "tenis": "verde_der", "marca": "Santa Clara", "grupo": "The Coca-Cola Company", "etiqueta": "SANTA CLARA", "firma": "Por seguir siendo libres y gloriosos", "punto": [-0.1243, 0.1441, -0.3228], "normal": [-0.941, 0.044, -0.334], "anio": "2023", "proyecto": "Posicionamiento y creación de plataforma creativa para leche deslactosada light", "texto": ["Colaboramos con el equipo de marketing de Santa Clara, marca de The Coca-Cola Company, en el desarrollo de una plataforma estratégica y creativa para su línea de productos deslactosados light, asegurando su alineación con la identidad de la marca y construyendo una propuesta de valor diferenciada y relevante para sus consumidores.", "Como resultado, desarrollamos el concepto creativo “Libre y Glorioso”, que se consolidó como eje central de la comunicación de la línea de productos y continúa formando parte de su identidad de marca."]},
+    {"id": "mondelez", "tenis": "verde_der", "marca": "Mondelēz", "etiqueta": "MONDELĒZ", "firma": "Marketing Mondelez", "punto": [-0.1283, 0.0059, -0.2681], "normal": [-0.965, -0.109, -0.241], "anio": "2024", "proyecto": "Participación en taller de equipo y cultura", "texto": ["Trabajamos con la división de marketing de Mondelēz en el desarrollo de un taller de cultura organizacional e integración de equipos, diseñando y facilitando dinámicas orientadas a fortalecer el liderazgo, fomentar la colaboración y alinear al equipo en torno a los retos y proyectos estratégicos de la compañía."]},
+    {"id": "cocacola", "tenis": "plateado_izq", "marca": "Coca-Cola", "grupo": "The Coca-Cola Company", "etiqueta": "COCA-COLA", "firma": "…transformación y reinvención", "punto": [0.0181, -0.1388, 0.4065], "normal": [0.17, 0.959, 0.229], "anio": "2024", "proyecto": "Estrategia de multipacks para América Latina", "texto": ["Como parte de una relación de colaboración de largo plazo con The Coca-Cola Company, trabajamos junto a su equipo comercial en el desarrollo de una estrategia comercial de multipacks para la icónica marca roja y su portafolio de productos en Latinoamérica.", "Como resultado, establecimos una hoja de ruta estratégica con prioridades y acciones claras a nivel regional, orientadas a maximizar la presencia, visibilidad e impacto de los productos en el punto de venta a través de sus distintos canales de comercialización."]},
+    {"id": "sanfer", "tenis": "plateado_izq", "marca": "Sanfer", "etiqueta": "SANFER", "firma": "#1 Sanfer! ¡Vamos x L. América", "punto": [0.0949, -0.1002, 0.0875], "normal": [0.895, 0.445, -0.032], "anio": "2024", "proyecto": "Participación en offsite de liderazgo y cultura corporativa", "texto": ["Participamos en la convención anual de liderazgo de la compañía farmacéutica impartiendo una conferencia enfocada en marketing estratégico y pensamiento retador, con el objetivo de inspirar nuevas perspectivas, cuestionar paradigmas tradicionales e impulsar una visión innovadora de colaboración."]},
+    {"id": "heineken", "tenis": "plateado_izq", "marca": "Heineken", "etiqueta": "HEINEKEN", "firma": "Sin miedo a cambiar se construye un futuro diferente!", "punto": [0.1328, -0.2449, -0.3127], "normal": [0.975, -0.193, -0.11], "anio": "2024", "proyecto": "Conferencia en offsite de liderazgo y marketing", "texto": ["Formamos parte de la convención anual de marketing de Heineken, compartiendo una conferencia orientada a desafiar las convenciones del marketing, estimular el pensamiento estratégico y fomentar nuevas formas de construir marcas relevantes, diferenciadas y capaces de conectar con consumidores en constante evolución."]},
+    {"id": "gentera", "tenis": "azul_izq", "marca": "Gentera", "etiqueta": "GENTERA", "firma": "Gentera", "punto": [-0.1214, -0.014, -0.2817], "normal": [-0.927, 0.374, -0.02], "anio": "2025–2026", "proyecto": "Desarrollo de cultura corporativa y liderazgo de alta frecuencia", "texto": ["Colaboramos con el equipo de liderazgo de Gentera, uno de los grupos financieros más importantes de México, en el desarrollo de un sistema de valores y creencias compartidas, orientado a fortalecer su cultura organizacional a través de prácticas y rituales ejecutables.", "Adicionalmente, en colaboración con Wallace & Grey, integramos una dimensión de bienestar y desarrollo personal mediante evaluaciones fisiológicas del sistema nervioso. Estas mediciones permitieron generar recomendaciones personalizadas de hábitos y estilo de vida para fortalecer el equilibrio emocional, el bienestar integral y el desempeño personal y profesional de los participantes."], "enlaces": {"Wallace & Grey": ""}},
+    {"id": "up", "tenis": "azul_izq", "marca": "Universidad Panamericana", "etiqueta": "UP", "firma": "Gracias por inspirar — UP", "punto": [0.1152, -0.1858, -0.3368], "normal": [0.985, 0.081, -0.149], "anio": "2025", "proyecto": "Posicionamiento y creación de talking points para posgrados, campus Santa Fe", "texto": ["Como parte de una relación de colaboración continua con la institución educativa, colaboramos con el equipo de liderazgo del nuevo campus Santa Fe en el desarrollo de una estrategia de posicionamiento para la Maestría en Marketing Estratégico (MME) y la Maestría Internacional en Finanzas (MIF).", "Como resultado, definimos con mayor precisión los perfiles aspirantes prioritarios y desarrollamos una arquitectura de mensajes estratégicos para fortalecer sus procesos de comunicación y reclutamiento.", "Tras la implementación de este trabajo, la universidad ha logrado cumplir consistentemente sus objetivos de inscripción en cada periodo académico."]},
+    {"id": "elemental", "tenis": "azul_der", "marca": "Elemental", "grupo": "PiSA Farmacéutica", "etiqueta": "ELEMENTAL", "firma": "Despierta tu potencial con ciencia Elemental", "punto": [0.094, -0.0053, -0.1352], "normal": [0.903, 0.428, 0.037], "anio": "2026", "proyecto": "Reposicionamiento de marca", "texto": ["Como parte del inicio de una relación de colaboración con STAL, la división de suplementos alimenticios de PiSA Farmacéutica, lideramos el desarrollo de una estrategia integral de reposicionamiento y relanzamiento para su marca de suplementos enfocados en el rendimiento físico, para fortalecer su diferenciación y competitividad en el mercado.", "Como resultado, construimos una nueva plataforma estratégica, creativa y de negocio que redefine la propuesta de valor de la marca y establece las bases para su lanzamiento a gran escala, proyectado para 2027."]},
+    {"id": "tec", "tenis": "negro_der", "marca": "Tec de Monterrey", "etiqueta": "TEC", "firma": "J.L. inspiras al TEC. Gracias infinitas", "punto": [-0.1207, -0.0818, 0.0], "normal": [-0.805, 0.592, -0.028], "anio": "", "proyecto": "", "texto": []}
+  ]
+}
+</script>
+
+<!-- Arma las secciones desde los datos (sin depender de nada externo) y deja listo el respaldo:
+     si three.js o GSAP no cargan (vendor/), el módulo nunca corre y la página queda como texto con
+     fotos de los tenis, en vez de un cargador girando para siempre. -->
+<script>
+(function(){
+  var html = document.documentElement;
+  if(new URLSearchParams(location.search).has('incrustado')) html.classList.add('incrustado');
+  var D = JSON.parse(document.getElementById('datos-tenis').textContent);
+  // Dos opciones de la colección (propuesta): sin repisas (la de siempre) o con la pared de repisas.
+  // Se prende con ?repisas en la dirección o con data-repisas en #tenis; ?sin-repisas la apaga.
+  var q = new URLSearchParams(location.search);
+  var conRepisas = !q.has('sin-repisas') && (q.has('repisas') || document.getElementById('tenis').hasAttribute('data-repisas'));
+  document.documentElement.classList.toggle('con-repisas', conRepisas);
+  // los pares ocultos (y sus firmas) no existen para el resto de la página
+  D.pares = D.pares.filter(function(p){ return !p.oculto; });
+  var tenisVisibles = [].concat.apply([], D.pares.map(function(p){ return p.tenis; }));
+  D.marcas = D.marcas.filter(function(m){ return tenisVisibles.indexOf(m.tenis) >= 0; });
+  window.TENIS_DATOS = D;
+  var LADO = {izq: 'izquierdo', der: 'derecho'};
+  var main = document.getElementById('recorrido');
+  var totalMarcas = D.marcas.length, nMarca = 0, nOscuro = 0;
+
+  function el(tag, attrs, hijos){
+    var e = document.createElement(tag);
+    for(var k in attrs || {}){
+      if(k === 'texto') e.textContent = attrs[k];
+      else if(k === 'clase') e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (hijos || []).forEach(function(h){ if(h) e.appendChild(h); });
+    return e;
+  }
+  function seccion(id, datos, hijos){
+    var s = el('section', Object.assign({clase: 'paso', id: id}, datos), [el('div', {clase: 'texto'}, hijos)]);
+    main.appendChild(s);
+    return s;
+  }
+  function pista(svg, texto){
+    var p = el('div', {clase: 'pista', 'data-requiere-3d': ''});
+    p.innerHTML = svg; p.appendChild(document.createTextNode(texto));
+    return p;
+  }
+  var FLECHA_ABAJO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>';
+  var FLECHAS_LADO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>';
+
+  D.pares.forEach(function(par, i){
+    var marcas = D.marcas.filter(function(m){ return par.tenis.indexOf(m.tenis) >= 0; });
+    var chips = el('div', {clase: 'chips'}, marcas.map(function(m){
+      return el('button', {clase: 'chip', type: 'button', 'data-ir': 'marca-' + m.id, texto: m.marca});
+    }));
+    if(i === 0){
+      var h1 = el('h1'); h1.innerHTML = 'Cada proyecto termina con una <em>firma</em>.';
+      seccion('portada', {'data-tipo': 'portada', 'data-par': par.id, 'data-lado': 'izq'}, [
+        el('span', {clase: 'etiqueta', texto: 'Tenis firmados'}), h1,
+        el('p', {texto: 'Cuando cerramos un proyecto, el equipo del cliente nos firma unos tenis. Entre dedicatorias y chistes internos están las marcas con las que hemos trabajado. Baja y encuéntralas.'}),
+        el('div', {clase: 'par-portada'}, [
+          el('span', {texto: 'Par 1 de ' + D.pares.length}), el('b', {texto: par.nombre}), el('span', {texto: 'El par ' + par.color})
+        ]),
+        pista(FLECHA_ABAJO, 'Baja para verlos de cerca')
+      ]);
+    } else {
+      seccion('par-' + par.id, {'data-tipo': 'par', 'data-par': par.id, 'data-lado': 'izq'}, [
+        el('span', {clase: 'etiqueta', texto: 'Par ' + (i + 1) + ' de ' + D.pares.length}),
+        el('h2', {texto: par.nombre}),
+        el('p', {texto: 'El par ' + par.color + (par.modelo ? ' · ' + par.modelo : '')}),
+        marcas.length ? chips : null,
+        pista(FLECHAS_LADO, 'Arrastra de lado sobre un tenis para girarlo')
+      ]);
+    }
+    marcas.forEach(function(m){
+      nMarca++;
+      var lado = (nOscuro++ % 2) ? 'der' : 'izq';
+      var t = m.tenis.split('_');
+      seccion('marca-' + m.id, {'data-tipo': 'marca', 'data-marca': m.id, 'data-par': par.id, 'data-lado': lado, 'data-tono': 'oscuro'}, [
+        el('span', {clase: 'etiqueta', texto: 'Firma ' + nMarca + ' de ' + totalMarcas + (m.anio ? ' · ' + m.anio : '')}),
+        el('h2', {texto: m.marca}),
+        el('div', {clase: 'firma-cita'}, [el('span', {texto: m.firma})]),
+        el('div', {clase: 'donde', texto: par.nombre + ' · tenis ' + LADO[t[1]]}),
+        el('div', {clase: 'acciones', 'data-requiere-3d': ''}, [
+          el('button', {clase: 'boton', type: 'button', 'data-ficha': m.id, texto: 'Ver el proyecto'})
+        ])
+      ]);
+    });
+  });
+
+  var nTenis = D.pares.reduce(function(n, p){ return n + p.tenis.length; }, 0);
+  var cifras = el('div', {clase: 'cifras'}, [
+    el('div', {}, [el('b', {texto: String(D.pares.length)}), el('span', {texto: 'pares'})]),
+    el('div', {}, [el('b', {texto: String(nTenis)}), el('span', {texto: 'tenis'})]),
+    el('div', {}, [el('b', {texto: String(totalMarcas)}), el('span', {texto: 'marcas destacadas'})])
+  ]);
+  seccion('coleccion', conRepisas ? {'data-tipo': 'coleccion', 'data-lado': 'centro', 'data-tono': 'oscuro'} : {'data-tipo': 'coleccion', 'data-lado': 'centro'}, [
+    el('span', {clase: 'etiqueta', texto: 'La colección'}),
+    (function(){ var h = el('h2'); h.innerHTML = 'Cada par, una historia. <em>Y contando.</em>'; return h; })(),
+    cifras,
+    el('div', {clase: 'acciones', 'data-requiere-3d': ''}, [
+      el('button', {clase: 'boton', type: 'button', 'data-explorar': '', texto: 'Explorar los tenis en 360°'})
+    ]),
+    pista('', 'Toca cualquier tenis para verlo de cerca')
+  ]);
+
+  // atajos de los pares a sus marcas
+  main.addEventListener('click', function(e){
+    var b = e.target.closest('[data-ir]');
+    if(b) document.getElementById(b.getAttribute('data-ir')).scrollIntoView({behavior: 'smooth', block: 'center'});
+  });
+
+  window.tenisSin3D = function(motivo){
+    if(html.classList.contains('sin3d')) return new Error(motivo);
+    console.warn('[tenis] sin 3D:', motivo);
+    html.classList.add('sin3d');
+    var r = document.getElementById('respaldo');
+    r.style.setProperty('--filas', D.pares.length);
+    D.pares.forEach(function(p){ p.tenis.forEach(function(id){
+      r.appendChild(el('img', {src: 'modelos/poster/' + id + '.webp', alt: p.nombre + ': tenis ' + LADO[id.split('_')[1]] + ' del par ' + p.color + ', cubierto de firmas', loading: 'lazy'}));
+    }); });
+    document.querySelectorAll('.texto').forEach(function(t){ t.classList.add('visible'); });
+    document.getElementById('cargando').classList.add('oculto');
+    return new Error(motivo);   // el módulo hace `throw tenisSin3D(...)` para detenerse con un mensaje legible
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){ if(!window.tenisModulo) window.tenisSin3D('no cargó el módulo 3D'); }, 0);
+  });
+})();
+</script>
+<script src="vendor/gsap@3.12.5/gsap.min.js"></script>
+<script src="vendor/gsap@3.12.5/ScrollTrigger.min.js"></script>
+<!-- el importmap está en el <head>: tiene que ir antes que cualquier modulepreload -->
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+
+window.tenisModulo = true;
+if(typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') throw window.tenisSin3D('no cargó GSAP');
+gsap.registerPlugin(ScrollTrigger);
+
+const DEBUG = new URLSearchParams(location.search).has('debug');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TAU = Math.PI * 2;
+const RUTA = 'modelos/';
+const D = window.TENIS_DATOS;
+const html = document.documentElement;
+const esCelular = ()=> innerWidth <= 767;
+
+/* ---------------------------------------------------------
+   1. ESCENA
+--------------------------------------------------------- */
+const canvas = document.getElementById('escena');
+// Resolución: el tope de densidad de pixeles, y de ahí baja sola si el equipo no alcanza (ver 9.).
+// Con densidad 2 o más los bordes ya se ven finos: el antialiasing (MSAA) solo cuesta, no se nota.
+const DPR_TOPE = Math.min(devicePixelRatio, esCelular() ? 1.5 : 2);
+let renderer;
+try{
+  renderer = new THREE.WebGLRenderer({canvas, antialias: DPR_TOPE < 2, alpha:true, powerPreference:'high-performance'});
+}catch(err){
+  throw window.tenisSin3D('sin WebGL');
+}
+renderer.setPixelRatio(DPR_TOPE);
+renderer.setClearColor(0x000000, 0);
+canvas.addEventListener('webglcontextlost', (e)=>{
+  e.preventDefault();
+  window.tenisSin3D('se perdió el contexto WebGL');
+});
+// la textura de 4K solo donde hay memoria de sobra (escritorio); en celular el tope es 2K
+const PERMITE_4K = !matchMedia('(pointer: coarse)').matches && renderer.capabilities.maxTextureSize >= 4096
+                   && (navigator.deviceMemory ?? 8) >= 4;
+const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+// Se dibuja solo cuando algo cambió (ver 9.). Lo que cambia fuera del loop (una textura nueva, el
+// tamaño del lienzo, un tenis que termina de cargar) lo avisa con pedirDibujo().
+let pendiente = true;
+const pedirDibujo = ()=>{ pendiente = true; };
+
+const CON_REPISAS = document.documentElement.classList.contains('con-repisas');   // ver los datos
+const scene = new THREE.Scene();
+const CAM_DIST = 5;
+const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 60);
+camera.position.set(0, 0, CAM_DIST);
+
+/* ---------------------------------------------------------
+   2. LOS TENIS
+   Cada uno: grupo (posición, escala, inclinación) > giroGrupo (vuelta sobre su eje) > modelo
+   centrado y normalizado a largo 1. La punta queda hacia +Z: giro 0 = la punta mira a la cámara.
+--------------------------------------------------------- */
+const V = (a)=> new THREE.Vector3().fromArray(a);
+const zapatos = [];
+const porId = new Map();
+D.pares.forEach((par, ip)=> par.tenis.forEach((id)=>{
+  const z = {
+    id, par, ip, lado: id.endsWith('_izq') ? 'izq' : 'der',
+    grupo: new THREE.Group(), giroGrupo: new THREE.Group(),
+    mallas: [], mat: null, capas: [], listo: false, tex: {}, nivel: null, pidiendo: null,
+    estado: {}, pose: null, giroU: 0, velU: 0, sel: {peso: 0}, marcas: [], hover: 0,
+  };
+  z.grupo.add(z.giroGrupo); z.grupo.visible = false; scene.add(z.grupo);
+  zapatos.push(z); porId.set(id, z);
+}));
+const marcas = D.marcas.filter(m => porId.has(m.tenis)).map(m => {
+  const mm = Object.assign({}, m, {z: porId.get(m.tenis), p: V(m.punto), n: V(m.normal).normalize(), peso: 0});
+  mm.z.marcas.push(mm);
+  return mm;
+});
+const marcaPorId = new Map(marcas.map(m => [m.id, m]));
+const nombreTenis = (z)=> `${z.par.nombre} · ${z.lado === 'izq' ? 'izquierdo' : 'derecho'}`;
+
+// giro que deja de frente el costado exterior (el derecho lo tiene hacia -X; el izquierdo hacia +X)
+const exterior = (z)=> z.lado === 'der' ? Math.PI / 2 : -Math.PI / 2;
+// giro e inclinación que dejan la firma mirando a la cámara
+const frente = (m)=> Math.atan2(-m.n.x, m.n.z);
+// nunca desde abajo: ningún escaneo tiene una suela de abajo presentable (en el plateado la tapa y los
+// relieves quedan encimados y se ven negros). Las firmas que miran un poco al piso se ven de frente.
+const inclFrente = (m)=> Math.max(.02, Math.atan2(m.n.y, Math.hypot(m.n.x, m.n.z)));
+const cercano = (angulo, a)=> angulo + Math.round((a - angulo) / TAU) * TAU;
+const lerp = THREE.MathUtils.lerp, clamp = THREE.MathUtils.clamp;
+// r: objeto donde escribir (el loop de dibujo reusa uno por tenis para no crear basura en cada cuadro)
+function mezclar(a, b, t, r = {}){ for(const k in BASE) r[k] = lerp(a[k] ?? BASE[k], b[k] ?? a[k] ?? BASE[k], t); return r; }
+
+/* ---------------------------------------------------------
+   2b. LAS REPISAS DE LA COLECCIÓN
+   Al final del recorrido cada tenis queda en su repisa, como en una pared de exhibición, y cada par
+   tiene la suya según su concepto ("repisa" en los datos): terciopelo capitoné con neón (Seducción),
+   una pila de libros (Inteligencia), un anaquel de súper con su etiqueta de precio (Consumidor), un
+   podio (Conquista). Todo sale de cajas y canvas: no hay nada que bajar.
+   Son hijas del grupo del tenis, no de su giro: viajan con él (también al modo explorar) pero no dan
+   vueltas. Medidas en largos de tenis (el tenis mide 1); el origen es la cara de arriba.
+--------------------------------------------------------- */
+function texCanvas(w, h, dibujar){
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  dibujar(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = maxAniso;
+  return t;
+}
+const texRepisa = new Map();   // cada textura se dibuja una vez y la comparten los dos tenis del par
+const texDe = (clave, w, h, dibujar)=>{
+  if(!texRepisa.has(clave)) texRepisa.set(clave, texCanvas(w, h, dibujar));
+  return texRepisa.get(clave);
+};
+function lineal(g, x0, y0, x1, y1, ...colores){
+  const d = g.createLinearGradient(x0, y0, x1, y1);
+  colores.forEach((c, i)=> d.addColorStop(i / (colores.length - 1), c));
+  return d;
+}
+function ruido(g, w, h, n, color){
+  g.fillStyle = color;
+  for(let i = 0; i < n; i++) g.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+}
+const basico = (o)=> new THREE.MeshBasicMaterial(o);
+function caja(w, h, d, mats, x = 0, y = 0, zz = 0){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats);
+  m.position.set(x, y, zz);
+  return m;
+}
+const FUENTE = (peso, px)=> `${peso} ${px}px Manrope, system-ui, sans-serif`;
+// caras de BoxGeometry: [+x, -x, arriba, abajo, frente, atrás]
+const REPISAS = {
+  // Seducción: terciopelo capitoné, con neón rosa
+  terciopelo: {neon: '#ff4fa3', armar(r){
+    const W = 1.16, H = .08, D = .64;
+    const arriba = texDe('terc-arriba', 512, 256, (g, w, h)=>{
+      const f = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+      f.addColorStop(0, '#a32e63'); f.addColorStop(1, '#4a0d28');
+      g.fillStyle = f; g.fillRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(30,0,12,.45)'; g.lineWidth = 3;          // los pliegues en rombo
+      for(let x = -h; x < w + h; x += 64){
+        g.beginPath(); g.moveTo(x, 0); g.lineTo(x + h, h); g.stroke();
+        g.beginPath(); g.moveTo(x + h, 0); g.lineTo(x, h); g.stroke();
+      }
+      for(let y = 0, fila = 0; y <= h; y += 32, fila++) for(let x = (fila % 2) * 32; x <= w; x += 64){
+        g.fillStyle = 'rgba(20,0,8,.75)'; g.beginPath(); g.arc(x, y, 5, 0, TAU); g.fill();       // botón
+        g.fillStyle = 'rgba(255,170,205,.4)'; g.beginPath(); g.arc(x - 1.5, y - 1.5, 2, 0, TAU); g.fill();
+      }
+      ruido(g, w, h, 3000, 'rgba(255,200,225,.05)');
+    });
+    const canto = texDe('terc-canto', 512, 64, (g, w, h)=>{
+      g.fillStyle = lineal(g, 0, 0, 0, h, '#c2447c', '#6e1a40', '#3a0820'); g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(255,190,220,.6)'; g.fillRect(0, 0, w, 2);
+      ruido(g, w, h, 800, 'rgba(255,200,225,.06)');
+    });
+    const lado = basico({map: canto}), fondo = basico({color: 0x2a0616});
+    r.add(caja(W, H, D, [lado, lado, basico({map: arriba}), fondo, lado, fondo], 0, -H / 2, 0));
+    return {W, H, D, tira: true};
+  }},
+
+  // Inteligencia: una pila de libros
+  libros: {neon: '#7dffb4', armar(r){
+    const libros = [
+      {w: 1.14, h: .074, d: .70, tapa: '#1d4a34', letras: '#e8c873', titulo: 'ESTRATEGIA', giro: .03, x: 0, lomo: true},
+      {w: 1.04, h: .058, d: .64, tapa: '#d9cdb0', letras: '#1d4a34', titulo: 'INTELIGENCIA', giro: -.05, x: .025, lomo: false},
+      {w: 1.10, h: .066, d: .67, tapa: '#2f6d4c', letras: '#f1e3b8', titulo: 'PALMER · COOPER · WALLACE', giro: .02, x: -.02, lomo: true},
+    ];
+    const alto = libros.reduce((t, l)=> t + l.h, 0);
+    let y = -alto;
+    libros.forEach((l, i)=>{
+      const lomo = basico({map: texDe('lomo' + i, 1024, 64, (g, w, h)=>{
+        g.fillStyle = l.tapa; g.fillRect(0, 0, w, h);
+        g.fillStyle = lineal(g, 0, 0, 0, h, 'rgba(0,0,0,.35)', 'rgba(255,255,255,.14)', 'rgba(0,0,0,.4)'); g.fillRect(0, 0, w, h);
+        g.fillStyle = l.letras;
+        for(const x of [56, 70, w - 74, w - 60]) g.fillRect(x, 6, 4, h - 12);     // bandas doradas
+        g.font = FUENTE(800, 28); g.textAlign = 'center'; g.textBaseline = 'middle';
+        if('letterSpacing' in g) g.letterSpacing = '6px';
+        g.fillText(l.titulo, w / 2, h / 2 + 1);
+      })});
+      const hojas = basico({map: texDe('hojas' + i, 256, 64, (g, w, h)=>{
+        g.fillStyle = '#efe5cc'; g.fillRect(0, 0, w, h);
+        g.fillStyle = 'rgba(120,95,60,.22)';
+        for(let yy = 10; yy < h - 10; yy += 3) g.fillRect(0, yy, w, 1);
+        g.fillStyle = l.tapa; g.fillRect(0, 0, w, 8); g.fillRect(0, h - 8, w, 8);   // las tapas
+      })});
+      const tapa = basico({map: texDe('tapa' + i, 256, 128, (g, w, h)=>{
+        g.fillStyle = l.tapa; g.fillRect(0, 0, w, h);
+        g.fillStyle = lineal(g, 0, 0, w, h, 'rgba(255,255,255,.12)', 'rgba(0,0,0,.2)'); g.fillRect(0, 0, w, h);
+        g.globalAlpha = .5; g.strokeStyle = l.letras; g.lineWidth = 2; g.strokeRect(12, 12, w - 24, h - 24);
+      })});
+      const m = caja(l.w, l.h, l.d, [hojas, hojas, tapa, tapa, l.lomo ? lomo : hojas, l.lomo ? hojas : lomo], l.x, y + l.h / 2, 0);
+      m.rotation.y = l.giro;
+      r.add(m);
+      y += l.h;
+    });
+    return {W: 1.14, H: alto, D: .70, tira: false};
+  }},
+
+  // Consumidor: el anaquel del súper, con espejo y su etiqueta de precio
+  gondola: {neon: '#d6e6ff', armar(r){
+    const W = 1.2, H = .03, D = .6, RIEL = .085;
+    const espejo = texDe('gond-espejo', 512, 256, (g, w, h)=>{
+      g.fillStyle = lineal(g, 0, 0, 0, h, '#555c68', '#cfd5de', '#767d89'); g.fillRect(0, 0, w, h);
+      g.filter = 'blur(6px)'; g.globalAlpha = .5; g.fillStyle = '#fff';          // reflejos
+      g.beginPath(); g.moveTo(w * .18, 0); g.lineTo(w * .3, 0); g.lineTo(w * .2, h); g.lineTo(w * .08, h); g.fill();
+      g.beginPath(); g.moveTo(w * .62, 0); g.lineTo(w * .66, 0); g.lineTo(w * .58, h); g.lineTo(w * .54, h); g.fill();
+    });
+    const riel = texDe('gond-riel', 1024, 72, (g, w, h)=>{
+      g.fillStyle = lineal(g, 0, 0, 0, h, '#f6f7f9', '#d6d9de'); g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(0, 0, w, 3); g.fillRect(0, h - 4, w, 4);
+      const x = w * .5;
+      g.fillStyle = '#ffd400'; g.fillRect(x, 9, 236, h - 18);                    // la etiqueta de precio
+      g.fillStyle = '#16181c'; g.textBaseline = 'middle';
+      g.font = FUENTE(800, 44); g.fillText('$∞', x + 12, h / 2 + 2);
+      g.font = FUENTE(800, 13); g.fillText('PRECIO', x + 118, h / 2 - 9); g.fillText('INCALCULABLE', x + 118, h / 2 + 9);
+      const bx = x + 252;                                                        // código de barras
+      g.fillStyle = '#fff'; g.fillRect(bx, 11, 150, h - 22);
+      g.fillStyle = '#16181c';
+      for(let cx = bx + 10, k = 7; cx < bx + 138;){
+        k = (k * 9301 + 49297) % 233280;
+        const a = 1 + k % 4;
+        g.fillRect(cx, 16, a, h - 32); cx += a + 1 + k % 3;
+      }
+    });
+    const canto = basico({color: 0xb7bdc7}), oscuro = basico({color: 0x3a3f48});
+    r.add(caja(W, H, D, [canto, canto, basico({map: espejo}), oscuro, canto, canto], 0, -H / 2, 0));
+    r.add(caja(W, RIEL, .02, [canto, canto, canto, canto, basico({map: riel}), canto], 0, .008 - RIEL / 2, D / 2 + .01));
+    for(const x of [-W * .38, W * .38]) r.add(caja(.022, .09, D * .8, oscuro, x, -H - .045, -.04));   // ménsulas
+    return {W, H: RIEL - .008, D: D + .04, tira: true};
+  }},
+
+  // Conquista: el podio, con el 1 en dorado
+  podio: {neon: '#3d7bff', armar(r){
+    const W = 1.08, H = .2, D = .68;
+    const frente = texDe('podio-frente', 512, 96, (g, w, h)=>{
+      g.fillStyle = lineal(g, 0, 0, 0, h, '#1f469c', '#0c1f4d'); g.fillRect(0, 0, w, h);
+      g.fillStyle = '#e9c46a'; g.fillRect(0, 0, w, 4); g.fillRect(0, h - 3, w, 3);
+      g.font = FUENTE(800, 64); g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('1', w / 2, h / 2 + 4);
+      g.font = FUENTE(800, 16); g.fillText('★', w / 2 - 64, h / 2 + 3); g.fillText('★', w / 2 + 64, h / 2 + 3);
+    });
+    const lado = texDe('podio-lado', 256, 96, (g, w, h)=>{
+      g.fillStyle = lineal(g, 0, 0, 0, h, '#183b85', '#0a1a42'); g.fillRect(0, 0, w, h);
+      g.fillStyle = '#e9c46a'; g.fillRect(0, 0, w, 4);
+    });
+    const arriba = texDe('podio-arriba', 512, 320, (g, w, h)=>{
+      const f = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+      f.addColorStop(0, '#2a56b3'); f.addColorStop(1, '#122c66');
+      g.fillStyle = f; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#e9c46a'; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8);
+    });
+    const l = basico({map: lado});
+    r.add(caja(W, H, D, [l, l, basico({map: arriba}), basico({color: 0x081433}), basico({map: frente}), l], 0, -H / 2, 0));
+    return {W, H, D, tira: true};
+  }},
+
+  // Hasta la muerte (el par negro, hoy oculto) y cualquier par sin repisa: granito negro con neón rojo
+  granito: {neon: '#ff3b3b', armar(r){
+    const W = 1.16, H = .06, D = .62;
+    const piedra = basico({map: texDe('granito', 256, 128, (g, w, h)=>{
+      g.fillStyle = '#18181b'; g.fillRect(0, 0, w, h);
+      ruido(g, w, h, 1400, 'rgba(255,255,255,.08)'); ruido(g, w, h, 500, 'rgba(0,0,0,.6)');
+    })});
+    r.add(caja(W, H, D, piedra, 0, -H / 2, 0));
+    return {W, H, D, tira: true};
+  }},
+};
+const estiloRepisa = (par)=> REPISAS[par.repisa] || REPISAS.granito;
+// la luz: un óvalo blanco que se desvanece, teñido con el neón de cada repisa
+const texLuz = ()=> texDe('luz', 256, 128, (g)=>{
+  g.scale(2, 1);
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.4, 'rgba(255,255,255,.4)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+});
+let geoLuz = null;
+function crearRepisa(z){
+  const estilo = estiloRepisa(z.par);
+  const r = new THREE.Group();
+  const med = estilo.armar(r);
+  z.repisaMallas = [];
+  r.traverse(o => { if(o.isMesh) z.repisaMallas.push(o); });   // las que se pueden tocar (sin las luces)
+  const neon = new THREE.Color(estilo.neon);
+  z.repisaLuces = [];
+  if(med.tira){
+    // el tubo de neón bajo el canto de enfrente
+    const mat = basico({color: neon.clone()});
+    r.add(caja(med.W * .92, .012, .012, mat, 0, -med.H - .007, med.D / 2 - .008));
+    z.repisaLuces.push({mat, color: neon});
+  }
+  geoLuz ??= new THREE.PlaneGeometry(1, 1);
+  const luz = (ancho, alto, x, y, zz, base, max)=>{
+    const mat = basico({map: texLuz(), color: neon, transparent: true, depthWrite: false, opacity: 0});
+    const m = new THREE.Mesh(geoLuz, mat);
+    m.scale.set(ancho, alto, 1); m.position.set(x, y, zz);
+    r.add(m);
+    z.repisaLuces.push({mat, base, max});
+  };
+  luz(med.W * 1.5, .3, 0, -med.H - .02, med.D / 2 + .02, med.tira ? .4 : .22, 1);   // lo que ilumina abajo
+  luz(1.9, 1.0, 0, .32, -med.D / 2 - .03, .1, .3);                                  // el reflejo en la pared
+  z.repisaMed = med;
+  r.position.y = -z.alto / 2 - .004;
+  return r;
+}
+const BLANCO = new THREE.Color(1, 1, 1);
+// w: cuánto está (0 = no está; crece a lo ancho al llegar); luz: 0 en reposo, 1 con el cursor encima
+function ponerRepisa(z, w, luz){
+  const r = z.repisa;
+  if(!r) return;
+  r.visible = w > .002;
+  if(!r.visible) return;
+  const s = w * w * (3 - 2 * w);
+  r.scale.set(s, .3 + .7 * s, .6 + .4 * s);
+  for(const l of z.repisaLuces){
+    if(l.color) l.mat.color.copy(l.color).multiplyScalar(.6 + .4 * luz).lerp(BLANCO, .3 * luz);
+    else l.mat.opacity = s * (l.base + (l.max - l.base) * luz);
+  }
+}
+
+/* ---------------------------------------------------------
+   3. CARGA: primero el par de la portada; los demás en segundo plano, en orden
+--------------------------------------------------------- */
+const cargando = document.getElementById('cargando');
+const barra = cargando.querySelector('i');
+const draco = new DRACOLoader().setDecoderPath('vendor/three@0.170.0/examples/jsm/libs/draco/gltf/');
+const gltfLoader = new GLTFLoader().setDRACOLoader(draco);
+
+/* Imágenes decodificadas fuera del hilo principal (createImageBitmap): con <img> el JPEG de 4K se
+   decodifica al subirlo a la GPU y congela la animación justo al acercarse a una firma. Safari y
+   Firefox viejo no aceptan las opciones que hacen falta: ahí se usa el cargador de siempre (mismo
+   criterio que GLTFLoader). */
+const ua = navigator.userAgent;
+const ffVersion = +(/Firefox\/(\d+)/.exec(ua)?.[1] ?? 0);
+const esSafari = /^((?!chrome|android).)*safari/i.test(ua);
+const bitmapLoader = (typeof createImageBitmap !== 'undefined' && !esSafari && !(ffVersion && ffVersion < 98))
+  ? new THREE.ImageBitmapLoader().setOptions({imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none'})
+  : null;
+/* Safari también: three lo excluye por las opciones, pero sin opciones funciona igual con estos JPEG
+   (sin orientación EXIF ni perfil de color). Probado en WebKit (Safari 27): misma imagen píxel por
+   píxel que con <img>, y subir una 2K baja de 19 a 6 ms porque ya no decodifica en el hilo principal.
+   Si algo falla, sigue el cargador de siempre. */
+const bitmapSafari = esSafari && typeof createImageBitmap !== 'undefined';
+const texLoader = new THREE.TextureLoader();
+async function decodificar(url){
+  if(bitmapLoader) return bitmapLoader.loadAsync(url);
+  if(bitmapSafari){
+    try{
+      const r = await fetch(url);
+      if(r.ok) return await createImageBitmap(await r.blob());
+    }catch(err){ /* al cargador de siempre */ }
+  }
+  return null;
+}
+async function imagen(url, esColor){
+  let t;
+  const bmp = await decodificar(url);
+  if(bmp){
+    t = new THREE.Texture(bmp);
+    t.needsUpdate = true;
+    // ya en la GPU, la copia decodificada en memoria normal sobra (un 4K son 64 MB)
+    t.onUpdate = ()=>{ bmp.close?.(); t.onUpdate = null; };
+  }else{
+    t = await texLoader.loadAsync(url);
+  }
+  t.flipY = false;                         // convención de UV de glTF (y un ImageBitmap no se voltea)
+  if(esColor) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = maxAniso;
+  return t;
+}
+
+/* 1K y 2K llegan en KTX2 (Basis ETC1S, ver fuentes/ktx2/codificar.mjs): ya comprimidas para la GPU y
+   con sus mipmaps, suben en menos de 1 ms (un JPEG 2K: 15–60 ms) y ocupan 4–8 veces menos memoria de
+   video. Las transcodifica un worker. La 4K sigue en JPEG (el codificador no acepta 16 Mpx). Si el KTX2
+   falla (por ejemplo, si no carga el transcodificador), se usa el JPEG del mismo nivel. */
+const ktx2Loader = new KTX2Loader()
+  .setTranscoderPath('vendor/three@0.170.0/examples/jsm/libs/basis/')
+  .setWorkerLimit(2)
+  .detectSupport(renderer);
+/* Lo que permite el sitio (Content-Security-Policy), probado antes de cargar nada: si un decodificador
+   no puede arrancar, su worker falla en silencio y la página se quedaría en el cargador para siempre.
+   - Sin 'unsafe-eval': el transcodificador de Basis (Emscripten) genera funciones con new Function y no
+     arranca → todo en JPEG (se ve igual; solo se pierde la subida barata del KTX2).
+   - Sin 'wasm-unsafe-eval' o sin workers desde blob: (worker-src) no hay Draco → sin 3D (respaldo).
+   Los workers heredan la política de la página, así que basta probarla aquí. */
+const permiteEval = (()=>{ try{ new Function(''); return true; }catch(err){ return false; } })();
+const permiteWasm = (()=>{ try{ new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); return true; }catch(err){ return false; } })();
+function permiteWorkers(){
+  return new Promise((listo)=>{
+    let w;
+    const fin = (ok)=>{ clearTimeout(reloj); w?.terminate(); listo(ok); };
+    const reloj = setTimeout(()=> fin(false), 4000);
+    try{
+      w = new Worker(URL.createObjectURL(new Blob(['postMessage(1)'], {type: 'text/javascript'})));
+      w.onmessage = ()=> fin(true);
+      w.onerror = ()=> fin(false);
+    }catch(err){ fin(false); }
+  });
+}
+if(!permiteEval) console.warn('[tenis] el sitio no permite eval (CSP): texturas en JPEG en vez de KTX2');
+async function comprimida(url){
+  const t = await ktx2Loader.loadAsync(url);   // sRGB y sin voltear vienen del archivo
+  t.anisotropy = maxAniso;
+  // ya en la GPU, los datos transcodificados en memoria normal sobran
+  t.onUpdate = ()=>{ for(const m of t.mipmaps) m.data = null; t.onUpdate = null; };
+  return t;
+}
+
+/* Las texturas de un tenis por capa y nivel: '' es la del escaneo y '_firmas' la de la suela con
+   firmas (solo el plateado izquierdo). Cada una es una entrada de caché que pasa por: pedida (bajando y
+   decodificando, fuera del hilo principal) → lista (decodificada, en RAM) → subida (en la GPU). Subir es
+   lo único caro para la página y se decide en revisarTexturas() (sección 4). */
+const LADO = {'1k': 1024, '2k': 2048, '4k': 4096};
+function textura(z, nivel, capa = ''){
+  const k = capa + nivel;
+  let e = z.tex[k];
+  if(!e){
+    const ancho = LADO[nivel], alto = capa ? ancho / 4 : ancho;   // el atlas de firmas es 4:1
+    const base = `${RUTA}tex/${z.id}${capa}_${nivel}`, ktx = nivel !== '4k' && permiteEval;
+    e = z.tex[k] = {nivel, capa, t: null, subida: false, usada: performance.now(),
+                    bytes: ancho * alto * (ktx ? 1 : 4) * 4 / 3};   // + mipmaps; comprimida ≤ 1 byte/px
+    const carga = ktx
+      ? comprimida(base + '.ktx2').catch((err)=>{ console.warn('[tenis] KTX2 → JPEG', base, err); return imagen(base + '.jpg', true); })
+      : imagen(base + '.jpg', true);
+    e.promesa = carga.then((t)=>{
+      if(z.tex[k] !== e){ desechar(t); throw new Error('ya no se necesita'); }
+      e.t = t;
+      return e;
+    });
+    e.promesa.catch(()=>{ if(z.tex[k] === e && !e.t) delete z.tex[k]; });
+  }
+  return e;
+}
+function subir(e){
+  if(e.subida) return;
+  renderer.initTexture(e.t);
+  e.subida = true;
+}
+function desechar(t){
+  t.dispose();
+  t.image?.close?.();      // un ImageBitmap que no llegó a subirse sigue ocupando RAM
+}
+
+// una sola textura y una sola geometría para las 10 sombras (cada una lleva su material por la opacidad)
+let texSombra = null, geoSombra = null;
+function crearSombra(alto){
+  if(!texSombra){
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(11,20,39,.4)'); grad.addColorStop(.55, 'rgba(11,20,39,.14)'); grad.addColorStop(1, 'rgba(11,20,39,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+    texSombra = new THREE.CanvasTexture(c);
+    geoSombra = new THREE.PlaneGeometry(1, 1);
+  }
+  const m = new THREE.Mesh(geoSombra,
+    new THREE.MeshBasicMaterial({map: texSombra, transparent: true, depthWrite: false}));
+  m.rotation.x = -Math.PI / 2;
+  m.scale.set(.46, 1.1, 1);   // el tenis es largo en z
+  m.position.y = -alto / 2 - .003;
+  m.renderOrder = -1;
+  return m;
+}
+
+/* Cromo (pares con "cromo": true). La textura del escaneo ya trae los reflejos que había al
+   fotografiarlo, pero quietos: al girar el tenis se ve pintado de plata. Se suma un entorno de estudio
+   (fondo oscuro con tres tiras de luz suaves) que sí se mueve con el giro, y solo donde la máscara de
+   metal lo pide (agujetas y lengüetas de tela no brillan). Sale de un canvas: no hay nada que bajar. */
+let entornoCromo = null;
+function entorno(){
+  if(entornoCromo) return entornoCromo;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  const cielo = g.createLinearGradient(0, 0, 0, 256);
+  cielo.addColorStop(0, '#3a3f4c'); cielo.addColorStop(.5, '#14171e'); cielo.addColorStop(1, '#07080b');
+  g.fillStyle = cielo; g.fillRect(0, 0, 512, 256);
+  g.filter = 'blur(10px)';
+  g.fillStyle = 'rgba(255,255,255,.95)'; g.fillRect(60, 40, 120, 26);     // tira principal, arriba
+  g.fillStyle = 'rgba(255,255,255,.7)';  g.fillRect(300, 70, 34, 110);    // tira vertical al costado
+  g.fillStyle = 'rgba(210,225,255,.5)';  g.fillRect(420, 30, 70, 18);     // contraluz fría
+  entornoCromo = new THREE.CanvasTexture(c);
+  entornoCromo.mapping = THREE.EquirectangularReflectionMapping;
+  entornoCromo.colorSpace = THREE.SRGBColorSpace;
+  return entornoCromo;
+}
+// nivel: con el que aparece (hoy todos entran con la 1K y suben de nivel solos, sección 4). Si fuera
+// otro, la de 1K se carga igual: es la de respaldo cuando hay que liberar memoria.
+async function cargarZapato(z, nivel, alProgreso){
+  const niveles = nivel === '1k' ? ['1k'] : ['1k', nivel];
+  const [gltf, metal] = await Promise.all([
+    gltfLoader.loadAsync(`${RUTA}${z.id}.glb`, alProgreso),
+    z.par.cromo ? imagen(`${RUTA}tex/${z.id}_metal.jpg`, false).catch(()=> null) : null,
+    ...niveles.map(n => textura(z, n).promesa),
+  ]);
+  const tex = z.tex[nivel].t;
+  const modelo = gltf.scene;
+  const caja = new THREE.Box3().setFromObject(modelo);
+  const tam = caja.getSize(new THREE.Vector3()), centro = caja.getCenter(new THREE.Vector3());
+  const escala = 1 / Math.max(tam.x, tam.y, tam.z);
+  modelo.position.copy(centro).multiplyScalar(-escala);
+  modelo.scale.setScalar(escala);
+  z.alto = tam.y * escala;
+  modelo.traverse((o)=>{
+    if(!o.isMesh) return;
+    const nombre = o.material.name || '';
+    const conColor = !!o.geometry.attributes.color;
+    o.material.dispose();
+    // la luz viene horneada (en la textura del escaneo y en los vértices de la suela): sin sombreado
+    if(nombre.startsWith('escaneo')){
+      o.material = z.mat = new THREE.MeshBasicMaterial({map: tex});
+      if(metal) Object.assign(o.material, {envMap: entorno(), specularMap: metal,
+                                           combine: THREE.AddOperation, reflectivity: .28});   // más lava las firmas
+      z.capas.push({capa: '', mat: o.material});
+    }else if(nombre.startsWith('firmas')){
+      // la imagen de las firmas (se pone abajo) por la luz de ambiente horneada en los vértices
+      o.material = new THREE.MeshBasicMaterial({vertexColors: conColor});
+      z.capas.push({capa: '_firmas', mat: o.material});
+    }else{
+      o.material = new THREE.MeshBasicMaterial({vertexColors: conColor, color: conColor ? 0xffffff : 0x777777});
+    }
+    z.mallas.push(o);
+  });
+  for(const c of z.capas) for(const n of niveles){
+    const e = c.capa ? await textura(z, n, c.capa).promesa : z.tex[n];
+    subir(e);
+    if(n === nivel) c.mat.map = e.t;
+  }
+  if(metal) renderer.initTexture(metal);
+  z.giroGrupo.add(modelo);
+  z.sombra = crearSombra(z.alto);
+  z.giroGrupo.add(z.sombra);
+  if(CON_REPISAS){
+    await document.fonts?.ready;          // las repisas llevan letras dibujadas en canvas
+    z.repisa = crearRepisa(z);
+    z.grupo.add(z.repisa);
+  }
+  // Compilar sus shaders ya, no la primera vez que aparece: el cromo y la suela con firmas del
+  // plateado tienen programas propios y compilarlos a media animación costaba ~175 ms (Radeon, D3D11).
+  // compileAsync usa KHR_parallel_shader_compile donde existe: no bloquea mientras compila.
+  const compilar = (o)=> renderer.compileAsync(o, camera, scene).catch(()=> renderer.compile(o, camera, scene));
+  await Promise.all([compilar(z.giroGrupo), z.repisa && compilar(z.repisa)]);
+  if(z.repisa) z.repisa.visible = false;
+  z.nivel = nivel;
+  z.listo = true;
+  pedirDibujo();
+}
+
+/* ---------------------------------------------------------
+   4. TEXTURA SEGÚN EL TAMAÑO EN PANTALLA
+   1K cuando el tenis se ve chico, 2K cuando ocupa buena parte, 4K solo de cerca (ficha abierta o
+   modo explorar, y solo en escritorio).
+
+   Subir una textura a la GPU congela la página mientras dura, y no se puede partir. Medido en una
+   laptop con Radeon integrada (Chrome, D3D11): 1K ≈ 5 ms, 2K ≈ 15–60 ms, 4K ≈ 100–280 ms; en Safari
+   (decodifica al subir) unas 2.5 veces más. Por eso:
+   - bajar y decodificar empieza en cuanto se quiere un nivel (eso no toca el hilo principal), pero
+     SUBIR solo se hace con la escena quieta (sin scroll, arrastre ni poses moviéndose; el vaivén no
+     cuenta) y de una en una;
+   - bajar de nivel nunca hace falta para verse bien: las grandes se quedan en la GPU mientras quepan
+     en un presupuesto, y se suelta primero la que lleva más tiempo sin usarse. Así regresar con el
+     scroll no vuelve a subir nada;
+   - la de 1K de cada tenis se sube al cargar y no se suelta nunca: es la de respaldo.
+--------------------------------------------------------- */
+const UMBRAL = {'2k': 520, '4k': 1500};   // largo del tenis en píxeles reales de pantalla
+const ORDEN = {'1k': 0, '2k': 1, '4k': 2};
+const QUIETO_MS = 250;
+const PRESUPUESTO = PERMITE_4K ? 160e6 : 50e6;   // bytes de texturas 2K/4K en la GPU (≈ una 4K + tres 2K)
+let quietoDesde = 0;                              // lo actualiza el loop de dibujo (sección 9)
+function nivelDeseado(z){
+  const visible = z.grupo.visible && (z.pose?.vis ?? 0) > .2;
+  if(!visible) return '1k';
+  const largo = (z.pose?.tam ?? 0) * renderer.domElement.width;
+  const deCerca = (modo.foco > .99 && marcaFoco?.z === z) || (modo.explorar > .99 && z.id === explorarId);
+  if(PERMITE_4K && deCerca && largo > UMBRAL['4k'] * (z.nivel === '4k' ? .75 : 1)) return '4k';
+  if(largo > UMBRAL['2k'] * (z.nivel === '1k' ? 1 : .75)) return '2k';
+  return '1k';
+}
+function aplicar(z, nivel){
+  for(const c of z.capas) c.mat.map = z.tex[c.capa + nivel].t;
+  z.nivel = nivel;
+  pedirDibujo();
+}
+function revisarTexturas(){
+  const ahora = performance.now();
+  const quieto = !arrastrando && dedos.size === 0 && ahora - quietoDesde > QUIETO_MS;
+  let subio = false;
+  for(const z of zapatos){
+    if(!z.listo) continue;
+    const quiero = nivelDeseado(z);
+    const visible = z.grupo.visible && (z.pose?.vis ?? 0) > .2;
+    for(const c of z.capas) for(const n of [quiero, visible ? z.nivel : null]){
+      const e = n && z.tex[c.capa + n];
+      if(e) e.usada = ahora;
+    }
+    if(ORDEN[quiero] <= ORDEN[z.nivel]) continue;               // ya tiene ese nivel o uno mejor
+    const es = z.capas.map(c => textura(z, quiero, c.capa));    // que vaya bajando y decodificando
+    // las KTX2 suben en ~1 ms: pueden entrar en movimiento (mejor: se afinan mientras el tenis llega,
+    // en vez de cambiar de nitidez ya quieto). Las JPEG (4K, o el respaldo) esperan al reposo.
+    const baratas = es.every(e => e.t?.isCompressedTexture);
+    if(subio || (!quieto && !baratas) || es.some(e => !e.t)) continue;
+    es.forEach(subir);
+    aplicar(z, quiero);
+    subio = true;                                               // una por vuelta: los costos no se juntan
+  }
+  podar(ahora);
+}
+function podar(ahora){
+  const grandes = [];
+  for(const z of zapatos) for(const k in z.tex){
+    const e = z.tex[k];
+    if(e.nivel === '1k') continue;
+    if(!e.subida){
+      // decodificada y ya nadie la quiere (se pasó de largo con el scroll): liberar la RAM
+      if(e.t && ahora - e.usada > 4000){ desechar(e.t); delete z.tex[k]; }
+      continue;
+    }
+    grandes.push({z, k, e});
+  }
+  let total = grandes.reduce((s, g)=> s + g.e.bytes, 0);
+  grandes.sort((a, b)=> a.e.usada - b.e.usada);
+  for(const {z, k, e} of grandes){
+    if(total <= PRESUPUESTO) break;
+    if(ahora - e.usada < 1500) continue;                        // en uso: no se toca
+    if(z.nivel === e.nivel) aplicar(z, '1k');                   // estaba puesta: vuelve a la de respaldo
+    desechar(e.t); delete z.tex[k];
+    total -= e.bytes;
+  }
+}
+setInterval(revisarTexturas, 200);
+
+/* ---------------------------------------------------------
+   5. EL RECORRIDO: una parada por <section>, en el mismo orden
+--------------------------------------------------------- */
+const secciones = [...document.querySelectorAll('#recorrido .paso')];
+const paradas = secciones.map((s)=>({
+  tipo: s.dataset.tipo, lado: s.dataset.lado, el: s,
+  par: D.pares.find(p => p.id === s.dataset.par) || null,
+  marca: s.dataset.marca ? marcaPorId.get(s.dataset.marca) : null,
+}));
+paradas.forEach((p, i)=>{ if(p.marca) p.marca.parada = i; });
+const iColeccion = paradas.findIndex(p => p.tipo === 'coleccion');
+
+/* Con repisas, la pared se acomoda en el espacio que queda entre la barra de arriba y el texto de la
+   colección, que se mide (cambia con el ancho, la fuente o el zoom del navegador): si no cabe se hace
+   más chica, y si sobra lugar se centra. y' = hasta + (y - desde) * k, y el tamaño por k. */
+const ajustePared = {k: 1, desde: 0, hasta: 0};
+function medirPared(){
+  if(!CON_REPISAS || !lienzo.h) return;
+  const h = lienzo.h, asp = lienzo.w / h;
+  let arriba = -Infinity, abajo = Infinity;
+  for(const z of zapatos){
+    const P = z.poseCol;
+    if(!P) continue;
+    const largo = P.tam * asp;                                // largo del tenis en fracciones de alto
+    arriba = Math.max(arriba, P.y + largo * .3);
+    abajo = Math.min(abajo, P.y - largo * .62 - 44 / h);      // con su repisa y el nombre del par
+  }
+  if(!isFinite(arriba)) return;
+  // la última parada termina con la sección al ras de abajo de la pantalla
+  const sec = document.getElementById('coleccion'), texto = sec.querySelector('.texto');
+  const textoArriba = h - (sec.offsetHeight - (texto.offsetTop - sec.offsetTop));
+  const barra = document.querySelector('header.barra');
+  const barraAlto = barra && getComputedStyle(barra).display !== 'none' ? barra.offsetHeight : 0;
+  const limArriba = .5 - (barraAlto + 8) / h, limAbajo = .5 - (textoArriba - 8) / h;
+  const libre = limArriba - limAbajo, ocupa = arriba - abajo;
+  ajustePared.k = clamp(libre / ocupa, .4, 1);
+  ajustePared.desde = abajo;
+  ajustePared.hasta = limAbajo + Math.max(0, libre - ocupa * ajustePared.k) / 2;
+  pedirDibujo();
+}
+const BASE = {x:0, y:0, z:0, tam:.3, giro:0, incl:.16, ladeo:0, px:0, py:0, pz:0, foco:0, vis:0, vaiven:0, sombra:1};
+
+/* Dónde va cada tenis en cada parada.
+   x, y: centro del tenis (o de la firma, con foco) en fracción de la pantalla; z: profundidad
+   en anchos de pantalla (negativo = más lejos). tam: largo del tenis en fracción del ancho.
+   giro / incl / ladeo en radianes. px/py/pz + foco: la firma que se centra. vis: si está en escena. */
+function poseCruda(p, z, cel){
+  const ipActual = p.par ? D.pares.indexOf(p.par) : -1;
+  if(p.tipo === 'coleccion'){
+    const n = D.pares.length, col = z.lado === 'izq' ? 0 : 1;
+    if(!CON_REPISAS){
+      // estante: en escritorio una columna por par (izquierdo arriba); en celular una fila por par
+      if(cel){
+        const paso = Math.min(.115, .42 / n);
+        return {...BASE, x: col ? .19 : -.19, y: .345 - z.ip * paso, tam: .31, z: -.05 * z.ip,
+                giro: exterior(z) + (col ? -.35 : .35), incl: .3, vis: 1, sombra: .6};
+      }
+      const ancho = Math.min(.68, .2 * n), x = n > 1 ? -ancho / 2 + z.ip * ancho / (n - 1) : 0;
+      return {...BASE, x, y: col ? .12 : .29, tam: Math.min(.15, .58 / n), z: col ? 0 : -.08,
+              giro: exterior(z) + (col ? -.4 : .4), incl: .28, vis: 1, sombra: .6};
+    }
+    // la pared de repisas: en escritorio una columna por par (izquierdo arriba); en celular una fila
+    // por par. Abajo de cada par va su nombre (moverRotulos), por eso las filas van separadas. El
+    // tamaño final lo ajusta medirPared() al espacio que deja el texto.
+    if(cel){
+      const paso = Math.min(.135, .54 / n);
+      return {...BASE, x: col ? .175 : -.175, y: .36 - z.ip * paso, tam: .27, z: -.03 * z.ip,
+              giro: exterior(z) + (col ? -.35 : .35), incl: .3, vis: 1, sombra: .8};
+    }
+    const ancho = Math.min(.68, .2 * n), x = n > 1 ? -ancho / 2 + z.ip * ancho / (n - 1) : 0;
+    return {...BASE, x, y: col ? .075 : .3, tam: Math.min(.14, .56 / n), z: col ? 0 : -.04,
+            giro: exterior(z) + (col ? -.4 : .4), incl: .28, vis: 1, sombra: .8};
+  }
+  if(z.ip !== ipActual){
+    // fuera de escena: los pares que vienen esperan abajo a la derecha (entran subiendo y girando);
+    // los que ya pasaron salen hacia arriba a la izquierda
+    return z.ip > ipActual
+      ? {...BASE, x: 1.0, y: -.45, z: -.45, tam: .3, incl: .7, ladeo: .35, vis: 0, entra: 1}
+      : {...BASE, x: -1.05, y: .35, z: -.45, tam: .3, incl: -.25, ladeo: -.3, vis: 0, sale: 1};
+  }
+  if(p.tipo === 'portada' || p.tipo === 'par'){
+    // el par junto: el izquierdo adelante con la punta hacia el texto, el derecho atrás en espejo
+    const atras = z.lado === 'der';
+    if(cel) return {...BASE, x: atras ? .15 : -.13, y: atras ? .14 : .27, z: atras ? -.3 : 0, tam: .6,
+                    giro: exterior(z) + (atras ? -.45 : .45), incl: .2, ladeo: atras ? .05 : -.05, vis: 1, vaiven: 1};
+    return {...BASE, x: atras ? .34 : .13, y: atras ? .08 : -.07, z: atras ? -.4 : 0, tam: .34,
+            giro: exterior(z) + (atras ? -.45 : .45), incl: .2, ladeo: atras ? .05 : -.05, vis: 1, vaiven: 1};
+  }
+  // parada de una marca
+  const m = p.marca;
+  if(m.z === z){
+    const espejo = p.lado === 'der' ? -1 : 1;     // el texto a la derecha manda el tenis a la izquierda
+    // foco < 1: la firma queda cerca del ancla pero sin sacar de cuadro el resto del tenis (las de la
+    // punta o el talón lo empujarían casi entero fuera)
+    const foco = {px: m.p.x, py: m.p.y, pz: m.p.z, foco: cel ? .85 : .72, giro: frente(m), incl: inclFrente(m) * .55, vis: 1, sombra: 0};
+    if(cel) return {...BASE, ...foco, x: 0, y: .2, tam: 1.3};
+    return {...BASE, ...foco, x: .25 * espejo, y: -.03, tam: .62};
+  }
+  // el compañero espera fuera de cuadro, del lado contrario al texto
+  return {...BASE, x: (p.lado === 'der' ? -1 : 1) * 1.05, y: -.2, z: -.4, tam: .32, incl: .5, ladeo: (p.lado === 'der' ? -1 : 1) * .3, vis: 0};
+}
+
+/* Las poses de un tenis en todo el recorrido. El giro avanza siempre en el mismo sentido (se le
+   suman vueltas) para que el scroll se sienta como una sola vuelta continua; fuera de escena toma el
+   giro de su siguiente aparición para entrar ya girando. */
+function posesDe(z, cel){
+  const P = paradas.map(p => poseCruda(p, z, cel));
+  const visibles = P.map((p, i)=> p.vis ? i : -1).filter(i => i >= 0);
+  P.forEach((p, i)=>{
+    if(p.vis) return;
+    const sig = visibles.find(j => j > i), ant = [...visibles].reverse().find(j => j < i);
+    if(sig !== undefined && (p.entra || ant === undefined)) p.giro = P[sig].giro - TAU * .85;   // entra casi con una vuelta
+    else if(ant !== undefined) p.giro = P[ant].giro + TAU * .55;                                // sale con media vuelta
+  });
+  for(let i = 1; i < P.length; i++){
+    const piso = P[i - 1].giro - .25;
+    P[i].giro = piso + ((P[i].giro - piso) % TAU + TAU) % TAU;
+    // la firma llega girando: al menos media vuelta antes de quedar de frente
+    if(P[i].foco > 0 && P[i - 1].vis && P[i].giro - P[i - 1].giro < TAU * .5) P[i].giro += TAU;
+  }
+  P.forEach(p => { delete p.entra; delete p.sale; });
+  return P;
+}
+
+/* Entre dos paradas el tenis no va en línea recta: a medio camino se aleja un poco y se inclina
+   (un arco), y en las entradas y salidas de un par los dos tenis van desfasados, como en cascada. */
+function mitad(a, b, z){
+  if(!a.vis && b.vis) return mezclar(a, b, z.lado === 'der' ? .22 : .5);      // el derecho entra un poco después
+  if(a.vis && !b.vis) return mezclar(a, b, z.lado === 'izq' ? .78 : .5);      // el izquierdo sale primero
+  const m = mezclar(a, b, .5);
+  if(a.vis && b.vis){ m.z -= .16; m.y += .03; m.incl += .1; }
+  return m;
+}
+
+let paradaActual = 0;
+let lineaTiempo = null;     // su tiempo va de 0 a paradas-1: el número de parada, con decimales
+function construirRecorrido(cel){
+  const tl = gsap.timeline();
+  for(const z of zapatos){
+    const P = posesDe(z, cel);
+    z.poseCol = P[iColeccion];
+    Object.assign(z.estado, P[0]);
+    for(let i = 1; i < P.length; i++){
+      tl.to(z.estado, {...mitad(P[i - 1], P[i], z), duration: .5, ease: 'sine.in'}, i - 1);
+      tl.to(z.estado, {...P[i], duration: .5, ease: 'power2.out'}, i - .5);
+    }
+  }
+  lineaTiempo = tl;
+  ScrollTrigger.create({trigger: '#recorrido', start: 'top top', end: 'bottom bottom',
+    scrub: reducedMotion ? true : .9, animation: tl,
+    onUpdate: (st)=>{ paradaActual = Math.round(st.progress * (paradas.length - 1)); }});
+}
+
+const tonoOscuro = [document.getElementById('tenis'), document.querySelector('header.barra')].filter(Boolean);
+let arrancado = false;
+function arrancar(){
+  if(arrancado) return; arrancado = true;
+  const mm = gsap.matchMedia();
+  mm.add('(max-width: 767px)', ()=>{ construirRecorrido(true); medirPared(); });
+  mm.add('(min-width: 768px)', ()=>{ construirRecorrido(false); medirPared(); });
+  if(CON_REPISAS){
+    new ResizeObserver(medirPared).observe(document.querySelector('#coleccion .texto'));
+    document.fonts?.ready.then(medirPared);
+  }
+  // Tono oscuro si CUALQUIER sección oscura está activa. Dos paradas de marca seguidas se traslapan un
+  // momento (la siguiente empieza antes de que termine la anterior): cuando cada una ponía o quitaba el
+  // tono por su cuenta, la que terminaba lo quitaba aunque la siguiente siguiera activa, y 9 de las 14
+  // paradas de marca quedaban en claro.
+  const oscuras = [];
+  const aplicarTono = ()=>{
+    const oscuro = oscuras.some(st => st.isActive);
+    tonoOscuro.forEach(el => el.classList.toggle('tono-oscuro', oscuro));
+  };
+  secciones.forEach((sec)=>{
+    const texto = sec.querySelector('.texto');
+    ScrollTrigger.create({trigger: sec, start: 'top 65%', end: 'bottom 35%',
+      onToggle: (st)=> texto.classList.toggle('visible', st.isActive)});
+    if(sec.dataset.tono === 'oscuro'){
+      oscuras.push(ScrollTrigger.create({trigger: sec, start: 'top 55%', end: 'bottom 45%', onToggle: aplicarTono}));
+    }
+  });
+  crearHotspots();
+  if(CON_REPISAS) crearRotulos();
+  requestAnimationFrame(cuadro);
+  cargando.classList.add('oculto');
+  if(!reducedMotion && scrollY < innerHeight * .5) gsap.fromTo(modo, {intro: 0}, {intro: 1, duration: 2.2, ease: 'power3.out', delay: .15});
+  window.tenis3D = true;
+}
+
+// el par de la portada decide cuándo se quita el cargador; los demás entran mientras se lee, uno por
+// uno y cuando el navegador está libre, para no competir con el scroll
+const ocioso = ()=> new Promise(r => 'requestIdleCallback' in window ? requestIdleCallback(()=> r(), {timeout: 800}) : setTimeout(r, 60));
+async function cargarTodo(){
+  // sin WebAssembly o sin workers no hay Draco (ver arriba): el respaldo, no un cargador eterno
+  if(!permiteWasm) throw window.tenisSin3D('el sitio no permite WebAssembly (CSP sin wasm-unsafe-eval)');
+  if(!(await permiteWorkers())) throw window.tenisSin3D('el sitio no permite workers desde blob: (CSP worker-src)');
+  const primeros = D.pares[0].tenis.map(id => porId.get(id));
+  const progreso = new Map();
+  const alProgreso = (id)=> (ev)=>{
+    if(!ev.total) return;
+    progreso.set(id, ev.loaded / ev.total);
+    barra.style.width = (100 * [...progreso.values()].reduce((a, b)=> a + b, 0) / primeros.length).toFixed(0) + '%';
+  };
+  try{
+    // también en escritorio aparece con la 1K: esperar a la 2K eran ~1.3 MB más con el cargador en
+    // pantalla (en 4G, segundos). La 2K ya viene precargándose y entra en cuanto la escena queda quieta
+    // (en KTX2 subirla cuesta ~1 ms).
+    await Promise.all(primeros.map(z => cargarZapato(z, '1k', alProgreso(z.id))));
+  }catch(err){
+    console.error(err);
+    throw window.tenisSin3D('no se pudieron cargar los modelos');
+  }
+  arrancar();
+  for(const z of zapatos){
+    if(z.listo) continue;
+    await ocioso();
+    try{ await cargarZapato(z, '1k'); }catch(err){ console.warn('[tenis] no cargó', z.id, err); }
+  }
+}
+// Dentro de la landing de la agencia la sección está casi al final: no se baja nada (~6.5 MB) hasta que
+// el visitante se acerca a ella (a pantalla y media). Como página suelta empieza de inmediato.
+const seccionTenis = document.getElementById('tenis');
+const cajaTenis = seccionTenis.getBoundingClientRect();
+const altoVentana = Math.max(innerHeight, 1);   // 0 en una pestaña abierta sin mostrarse
+if(cajaTenis.top < altoVentana * 2.5 && cajaTenis.bottom > -altoVentana * 1.5){
+  cargarTodo();   // ya está a la vista (la página suelta): sin esperar al primer cuadro
+}else{
+  const vigiaCarga = new IntersectionObserver((es)=>{
+    if(!es.some(e => e.isIntersecting)) return;
+    vigiaCarga.disconnect();
+    cargarTodo();
+  }, {rootMargin: '150% 0px'});
+  vigiaCarga.observe(seccionTenis);
+}
+
+/* ---------------------------------------------------------
+   6. GIRO CON ARRASTRE (y pellizco en modo explorar)
+   En el recorrido solo cuenta el arrastre horizontal: el vertical lo toma el navegador para
+   hacer scroll (touch-action: pan-y). Gira el tenis que está bajo el dedo (o el principal de la
+   parada); al soltar regresa solo a su pose. En modo explorar se gira en los dos ejes.
+--------------------------------------------------------- */
+let inclUsuario = 0, zoomUsuario = 1;
+let arrastrando = null, ultX = 0, ultY = 0, ultT = 0, bajoX = 0, bajoY = 0, seMovio = false;
+let hoverId = null;
+const dedos = new Map();
+let pellizcoPrev = 0;
+const raycaster = new THREE.Raycaster();
+
+function tenisBajo(e){
+  const caja = canvas.getBoundingClientRect();
+  raycaster.setFromCamera(new THREE.Vector2((e.clientX - caja.left) / caja.width * 2 - 1,
+                                            -((e.clientY - caja.top) / caja.height) * 2 + 1), camera);
+  // la repisa también cuenta (es un blanco más grande), salvo en explorar: ahí el clic de ?debug es
+  // para tomar coordenadas sobre el tenis
+  const conRepisa = (z)=> modo.explorar < .5 && z.repisa?.visible;
+  const objetivos = zapatos.filter(z => z.listo && z.grupo.visible).flatMap(z => conRepisa(z) ? [...z.mallas, ...z.repisaMallas] : z.mallas);
+  const hit = raycaster.intersectObjects(objetivos, false)[0];
+  return hit ? {z: zapatos.find(z => z.mallas.includes(hit.object) || z.repisaMallas?.includes(hit.object)), hit} : null;
+}
+function principal(){
+  if(modo.explorar > .5) return porId.get(explorarId);
+  const p = paradas[paradaActual];
+  if(p?.marca) return p.marca.z;
+  if(p?.par) return porId.get(p.par.tenis[0]);
+  return null;
+}
+
+canvas.addEventListener('pointerdown', (e)=>{
+  if(e.pointerType === 'mouse') e.preventDefault();   // que arrastrar no seleccione el texto de encima
+  dedos.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if(dedos.size === 2){ arrastrando = null; pellizcoPrev = distanciaDedos(); return; }
+  const bajo = modo.explorar > .5 ? null : tenisBajo(e);
+  arrastrando = modo.explorar > .5 ? principal() : (bajo?.z || principal());
+  seMovio = false;
+  ultX = bajoX = e.clientX; ultY = bajoY = e.clientY; ultT = performance.now();
+  if(arrastrando) arrastrando.velU = 0;
+  canvas.classList.add('arrastrando');
+});
+function soltar(e){
+  dedos.delete(e.pointerId);
+  if(dedos.size < 2) pellizcoPrev = 0;
+  if(arrastrando !== null && !seMovio && e.type === 'pointerup') tocar(e);
+  arrastrando = null; canvas.classList.remove('arrastrando');
+}
+addEventListener('pointerup', soltar);
+addEventListener('pointercancel', soltar);
+addEventListener('pointermove', (e)=>{
+  if(dedos.has(e.pointerId)) dedos.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if(dedos.size === 2 && modo.explorar > .5){
+    const d = distanciaDedos();
+    if(pellizcoPrev) zoomUsuario = clamp(zoomUsuario * d / pellizcoPrev, .7, 2.8);
+    pellizcoPrev = d; return;
+  }
+  if(!dedos.has(e.pointerId) && e.pointerType === 'mouse' && paradas[paradaActual]?.tipo === 'coleccion' && modo.explorar < .5){
+    const bajo = tenisBajo(e);
+    canvas.classList.toggle('senalando', !!bajo);   // en la colección, los tenis se pueden tocar
+    if(CON_REPISAS) hoverId = bajo?.z.id ?? null;    // y el que está bajo el cursor se levanta y prende su repisa
+  }
+  if(!arrastrando || modo.foco > .01) return;
+  const now = performance.now(), dt = Math.max(1, now - ultT);
+  const dx = e.clientX - ultX, dy = e.clientY - ultY;
+  if(Math.hypot(e.clientX - bajoX, e.clientY - bajoY) > 6) seMovio = true;
+  const sens = 7 / canvas.clientWidth;   // cruzar el lienzo ≈ una vuelta completa
+  arrastrando.giroU += dx * sens;
+  arrastrando.velU = dx * sens / dt * 1000;
+  // -.12: con la inclinación base (.14) la cámara llega a ras del piso, nunca por debajo
+  if(modo.explorar > .5) inclUsuario = clamp(inclUsuario + dy * sens * .6, -.12, 1.1);
+  ultX = e.clientX; ultY = e.clientY; ultT = now;
+});
+canvas.addEventListener('pointerleave', ()=>{ hoverId = null; canvas.classList.remove('senalando'); });
+function distanciaDedos(){ const [a, b] = [...dedos.values()]; return Math.hypot(a.x - b.x, a.y - b.y); }
+canvas.addEventListener('wheel', (e)=>{
+  if(modo.explorar < .5) return;   // en el recorrido la rueda hace scroll normal
+  e.preventDefault();
+  zoomUsuario = clamp(zoomUsuario * Math.exp(-e.deltaY * .0015), .7, 2.8);
+}, {passive: false});
+
+// un toque sin arrastrar: en la colección abre ese tenis; con ?debug imprime coordenadas de firma
+function tocar(e){
+  const bajo = tenisBajo(e);
+  if(DEBUG && bajo && modo.explorar > .5) return depurar(bajo);   // las coordenadas de firmas se toman en explorar
+  if(bajo && modo.explorar < .5 && paradas[paradaActual]?.tipo === 'coleccion') entrarExplorar(bajo.z.id);
+}
+
+/* ---------------------------------------------------------
+   7. MODO EXPLORAR: un tenis a la vez, centrado, con todas sus firmas
+--------------------------------------------------------- */
+const modo = {explorar: 0, foco: 0, intro: 1};
+let explorarId = zapatos[0].id;
+const expNombre = document.querySelector('.exp-nombre');
+// Ángulo con que aparece cada tenis en explorar: 3/4 de su costado exterior, hacia la punta (donde
+// casi todos tienen sus firmas). null = se queda con el ángulo que traía del recorrido (al entrar desde
+// la parada de una de sus marcas, para no perder de vista esa firma).
+function elegirExplorar(id, animar = true, conservarAngulo = false){
+  explorarId = id;
+  const z = porId.get(id);
+  z.giroExp = conservarAngulo ? null : cercano(exterior(z) + (z.lado === 'izq' ? .6 : -.6), z.estado.giro);
+  expNombre.querySelector('b').textContent = nombreTenis(z);
+  expNombre.querySelector('span').textContent = z.marcas.length
+    ? z.marcas.map(m => m.marca).join(' · ') : (z.par.modelo || 'Sin firmas de marca destacadas');
+  inclUsuario = 0; zoomUsuario = 1;
+  for(const o of zapatos) gsap.to(o.sel, {peso: o.id === id ? 1 : 0, duration: animar && !reducedMotion ? .8 : 0, ease: 'power2.inOut', overwrite: true});
+}
+function entrarExplorar(id){
+  cerrarPanel();
+  const p = paradas[paradaActual];
+  const elegido = typeof id === 'string' ? id : (p?.marca?.z.id || (p?.par ? p.par.tenis[0] : zapatos[0].id));
+  elegirExplorar(elegido, false, p?.marca?.z.id === elegido);
+  avisar('explorar', {tenis: explorarId});
+  html.classList.add('explorando', 'bloqueado');
+  gsap.to(modo, {explorar: 1, duration: reducedMotion ? .2 : 1, ease: 'power2.inOut'});
+  document.getElementById('salir-explorar').focus({preventScroll: true});
+}
+function salirExplorar(){
+  if(!html.classList.contains('explorando')) return;
+  cerrarPanel();
+  html.classList.remove('explorando', 'bloqueado');
+  gsap.to(modo, {explorar: 0, duration: reducedMotion ? .2 : .9, ease: 'power2.inOut'});
+}
+function moverExplorar(paso){
+  const i = zapatos.findIndex(z => z.id === explorarId);
+  const sig = zapatos[(i + paso + zapatos.length) % zapatos.length];
+  if(!sig.listo) return;
+  elegirExplorar(sig.id);
+}
+document.addEventListener('click', (e)=>{
+  const b = e.target.closest('[data-explorar]');
+  if(b) entrarExplorar();
+  const f = e.target.closest('[data-ficha]');
+  if(f) abrirPanel(marcaPorId.get(f.dataset.ficha));
+});
+document.getElementById('salir-explorar').addEventListener('click', salirExplorar);
+document.getElementById('exp-ant').addEventListener('click', ()=> moverExplorar(-1));
+document.getElementById('exp-sig').addEventListener('click', ()=> moverExplorar(1));
+addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){ if(panel.classList.contains('abierto')) cerrarPanel(); else salirExplorar(); }
+  if(modo.explorar > .5 && !panel.classList.contains('abierto')){
+    const z = porId.get(explorarId);
+    if(e.key === 'ArrowLeft') z.velU = -2.5;
+    if(e.key === 'ArrowRight') z.velU = 2.5;
+    if(e.key === 'PageDown' || e.key === ']') moverExplorar(1);
+    if(e.key === 'PageUp' || e.key === '[') moverExplorar(-1);
+  }
+});
+function poseExplorar(z){
+  const cel = esCelular();
+  const i = zapatos.indexOf(z), iSel = zapatos.findIndex(o => o.id === explorarId);
+  // con repisa, el tenis un poco más arriba y más chico para que ella quepa sobre la barra de abajo
+  const centro = {...BASE, x: 0, y: CON_REPISAS ? .1 : (cel ? .08 : .03),
+                  tam: (CON_REPISAS ? (cel ? .8 : .44) : (cel ? .86 : .48)) * zoomUsuario,
+                  giro: z.giroExp ?? z.estado.giro, incl: .14 + inclUsuario, vis: 1, sombra: 1};
+  const fuera = {...centro, x: (i < iSel ? -1 : 1) * 1.15, tam: .4, vis: 0};
+  return mezclar(fuera, centro, z.sel.peso);
+}
+
+/* ---------------------------------------------------------
+   8. HOTSPOTS Y FICHA DE LA MARCA
+--------------------------------------------------------- */
+const capa = document.getElementById('hotspots');
+const panel = document.getElementById('panel');
+let poseFoco = null, marcaFoco = null;
+// el nombre de cada par, bajo sus repisas
+const rotulos = [];
+function crearRotulos(){
+  const caja = document.getElementById('rotulos');
+  D.pares.forEach((par, i)=>{
+    const el = document.createElement('div');
+    el.className = 'rotulo';
+    el.style.setProperty('--acento', estiloRepisa(par).neon);
+    el.append(Object.assign(document.createElement('small'), {textContent: 'Par ' + (i + 1)}), par.nombre);
+    caja.appendChild(el);
+    rotulos.push({par, el, x: NaN, y: NaN, o: -1, activo: false, zs: par.tenis.map(id => porId.get(id))});
+  });
+}
+function moverRotulos(visible){
+  for(const ro of rotulos){
+    const zs = ro.zs.filter(z => z.listo && z.repisa?.visible);
+    const o = zs.length ? Math.round(visible * 100) / 100 : 0;
+    if(o > 0){
+      // centrado bajo las repisas del par, debajo de la más baja en pantalla
+      let x = 0, y = -Infinity;
+      for(const z of zs){
+        z.grupo.localToWorld(tmp.set(0, -z.alto / 2 - z.repisaMed.H, z.repisaMed.D / 2)).project(camera);
+        x += (tmp.x + 1) / 2 * lienzo.w / zs.length;
+        y = Math.max(y, (1 - tmp.y) / 2 * lienzo.h);
+      }
+      x = Math.round(x); y = Math.round(y + (lienzo.w < 768 ? 6 : 14));
+      if(x !== ro.x || y !== ro.y){ ro.el.style.transform = `translate(${x}px, ${y}px) translateX(-50%)`; ro.x = x; ro.y = y; }
+    }
+    if(o !== ro.o){ ro.el.style.opacity = o; ro.o = o; }
+    const activo = zs.some(z => z.hover > .5);
+    if(activo !== ro.activo){ ro.el.classList.toggle('activo', activo); ro.activo = activo; }
+  }
+}
+function crearHotspots(){
+  for(const m of marcas){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'hotspot';
+    b.setAttribute('aria-label', 'Ver el proyecto con ' + m.marca);
+    b.innerHTML = '<span class="anillo"></span><span class="guia"></span><span class="nombre"></span>';
+    b.querySelector('.nombre').textContent = m.etiqueta || m.marca;
+    b.addEventListener('click', ()=> abrirPanel(m));
+    capa.appendChild(b);
+    m.el = b;
+  }
+}
+/* Medición (opcional): abrir una ficha o el modo explorar se avisa como evento del documento
+   ('tenis:ficha', 'tenis:explorar') y, si la página tiene Google Tag Manager o GA4 (window.dataLayer),
+   también ahí ('tenis_ficha', 'tenis_explorar'). Así la agencia puede ver qué marcas se abren más sin
+   tocar este código. Por su cuenta no manda nada a ningún lado. */
+function avisar(nombre, datos){
+  document.dispatchEvent(new CustomEvent('tenis:' + nombre, {detail: datos}));
+  window.dataLayer?.push({event: 'tenis_' + nombre, ...datos});
+}
+// un <p> por párrafo; lo que aparezca en "enlaces" con dirección se vuelve link (sin innerHTML:
+// el texto viene de los datos y así nunca se interpreta como HTML)
+function llenarTexto(caja, m){
+  caja.replaceChildren();
+  for(const parrafo of m.texto || []){
+    const pe = document.createElement('p');
+    const enlaces = Object.entries(m.enlaces || {}).filter(([t, url])=> url && parrafo.includes(t));
+    let resto = parrafo;
+    for(const [t, url] of enlaces){
+      const i = resto.indexOf(t);
+      pe.append(resto.slice(0, i));
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = t;
+      pe.append(a);
+      resto = resto.slice(i + t.length);
+    }
+    pe.append(resto);
+    caja.append(pe);
+  }
+}
+function abrirPanel(m){
+  if(!m) return;
+  avisar('ficha', {marca: m.id, nombre: m.marca, tenis: m.z.id});
+  marcaFoco = m;
+  panel.querySelector('#panel-marca').textContent = m.marca;
+  panel.querySelector('[data-campo="anio"]').textContent = m.anio ? 'Proyecto · ' + m.anio : 'Proyecto';
+  panel.querySelector('[data-campo="grupo"]').textContent = m.grupo || '';
+  panel.querySelector('[data-campo="firma"]').textContent = m.firma || '';
+  panel.querySelector('[data-campo="proyecto"]').textContent = m.proyecto || '';
+  llenarTexto(panel.querySelector('[data-campo="texto"]'), m);
+  panel.querySelector('[data-campo="nota"]').textContent = (m.proyecto && m.texto?.length) ? '' : 'Datos de ejemplo: falta que la agencia nos pase el proyecto y el año.';
+  panel.scrollTop = 0;
+  panel.hidden = false;
+  requestAnimationFrame(()=> panel.classList.add('abierto'));
+  html.classList.add('bloqueado', 'enfocado');
+  // el acercamiento parte del giro actual para dar la vuelta por el lado corto
+  const cel = esCelular();
+  poseFoco = {...BASE, x: cel ? 0 : -.17, y: cel ? .24 : 0, tam: cel ? 2.0 : 1.3,
+              giro: cercano(frente(m), m.z.pose?.giro ?? 0), incl: inclFrente(m) * .75,
+              px: m.p.x, py: m.p.y, pz: m.p.z, foco: 1, vis: 1, sombra: 0};
+  gsap.to(modo, {foco: 1, duration: reducedMotion ? .2 : 1.1, ease: 'power3.inOut', overwrite: true});
+  panel.querySelector('.cerrar').focus({preventScroll: true});
+}
+function cerrarPanel(){
+  if(!panel.classList.contains('abierto')) return;
+  panel.classList.remove('abierto');
+  html.classList.remove('enfocado');
+  if(!html.classList.contains('explorando')) html.classList.remove('bloqueado');
+  gsap.to(modo, {foco: 0, duration: reducedMotion ? .2 : .9, ease: 'power2.inOut', overwrite: true,
+                 onComplete: ()=>{ panel.hidden = true; }});
+}
+panel.querySelector('.cerrar').addEventListener('click', cerrarPanel);
+
+/* ---------------------------------------------------------
+   9. LOOP DE DIBUJO
+--------------------------------------------------------- */
+const tmp = new THREE.Vector3(), tmpN = new THREE.Vector3(), aCam = new THREE.Vector3();
+let tPrev = performance.now();
+
+/* Qué se ahorra:
+   - Fuera de pantalla no se calcula ni se dibuja nada (dentro de la landing de la agencia, mientras
+     el visitante lee otras secciones). Con la pestaña en segundo plano el navegador ya lo pausa.
+   - Si nada se movió desde el último cuadro, no se vuelve a dibujar: en una parada quieta la GPU
+     descansa. La "huella" es una suma de todo lo que define la imagen; con la inercia del dedo y el
+     regreso a la pose, que nunca llegan exactamente a cero, se cortan los restos (ver abajo).
+   - Si el equipo no alcanza (2/3 de los cuadros tardan más de 1.5 veces lo normal de esa pantalla,
+     y al menos 20 ms), se baja la resolución un escalón, hasta densidad 1. */
+let enPantalla = true;
+new IntersectionObserver((es)=>{
+  enPantalla = es[es.length - 1].isIntersecting;
+  if(enPantalla) pedirDibujo();
+}).observe(document.getElementById('tenis'));
+let huellaPrev = NaN, movimientoPrev = NaN, hotspotsMoviendo = true;
+let dpr = DPR_TOPE;
+const medidor = {n: 0, lentos: 0, ultimo: 0, mejor: Infinity};
+function medir(now){
+  const intervalo = now - medidor.ultimo;
+  medidor.ultimo = now;
+  if(intervalo > 100) return;                  // venía de una pausa: no dice nada del equipo
+  medidor.mejor = Math.max(6, Math.min(medidor.mejor, intervalo));
+  medidor.n++;
+  if(intervalo > Math.max(20, medidor.mejor * 1.5)) medidor.lentos++;
+  if(medidor.n < 90) return;
+  if(medidor.lentos > 60 && dpr > 1){
+    dpr = Math.max(1, dpr - .25);
+    renderer.setPixelRatio(dpr);
+    ajustarTamano();
+    if(DEBUG) console.log('[tenis] resolución bajada a', dpr);
+  }
+  medidor.n = medidor.lentos = 0;
+}
+
+function cuadro(now){
+  requestAnimationFrame(cuadro);
+  const dt = Math.min(.05, (now - tPrev) / 1000); tPrev = now;
+  if(!enPantalla && modo.explorar < .01) return;
+  const altoMundo = 2 * CAM_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const anchoMundo = altoMundo * camera.aspect;
+  let huella = camera.aspect, movimiento = camera.aspect;
+  // las repisas llegan en la segunda mitad del camino hacia la colección
+  const tCol = lineaTiempo ? clamp((lineaTiempo.time() - (iColeccion - .55)) / .55, 0, 1) : 0;
+  const enColeccion = paradas[paradaActual]?.tipo === 'coleccion' && modo.explorar < .5;
+
+  for(const z of zapatos){
+    if(!z.listo) continue;
+    // pose del scroll mezclada con el modo explorar
+    let est = z.estado;
+    if(CON_REPISAS && tCol > 0){
+      // la pared, acomodada al espacio libre (medirPared)
+      const a = ajustePared;
+      est = Object.assign(z.ajusteBuf ??= {}, z.estado);
+      est.y = lerp(z.estado.y, a.hasta + (z.estado.y - a.desde) * a.k, tCol);
+      est.tam = z.estado.tam * lerp(1, a.k, tCol);
+    }
+    let p = mezclar(est, modo.explorar > 0 ? poseExplorar(z) : est, modo.explorar, z.poseBuf ??= {});
+    // inercia del giro con el dedo y regreso suave a la pose (en explorar el giro se queda)
+    if(arrastrando !== z){
+      z.giroU += z.velU * dt;
+      z.velU *= Math.exp(-dt * 3.5);
+      if(Math.abs(z.velU) < 1e-3) z.velU = 0;
+      const regreso = 1 - modo.explorar;
+      if(regreso > 0){
+        const meta = Math.round(z.giroU / TAU) * TAU;
+        z.giroU += (meta - z.giroU) * (1 - Math.exp(-dt * 2.2 * regreso));
+        if(Math.abs(meta - z.giroU) < 1e-4) z.giroU = meta;
+      }
+    }
+    p.giro += z.giroU;
+    const vaiven = reducedMotion ? 0 : p.vaiven * .22 * Math.sin(now / 1000 * .6 + z.ip * 1.7 + (z.lado === 'der' ? 2 : 0));
+    p.giro += vaiven;
+    if(poseFoco && modo.foco > 0 && marcaFoco?.z === z) p = mezclar(p, poseFoco, modo.foco);
+    if(modo.intro < 1 && z.ip === 0){
+      // al cargar, el par de la portada sube girando; el derecho un instante después
+      const t = clamp((modo.intro - (z.lado === 'der' ? .12 : 0)) / .88, 0, 1);
+      p = mezclar({...p, giro: p.giro - TAU * .9, y: p.y - .55, z: p.z - .4, incl: p.incl + .6, ladeo: p.ladeo + .3}, p, t);
+    }
+    z.pose = p;
+    const hQuiero = hoverId === z.id && enColeccion ? 1 : 0;
+    z.hover += (hQuiero - z.hover) * (1 - Math.exp(-dt * 9));
+    if(Math.abs(hQuiero - z.hover) < 1e-3) z.hover = hQuiero;
+    // la repisa acompaña al tenis elegido en explorar (también si se entró desde una marca)
+    const wRepisa = Math.max(tCol, modo.explorar * z.sel.peso) * (1 - modo.foco);
+    p.giro += .22 * z.hover;
+
+    z.grupo.visible = p.vis > .002 && Math.abs(p.x) < 1.6;
+    if(!z.grupo.visible) continue;
+    const termino = p.x * 1.3 + p.y * 1.7 + p.z * 2.3 + p.tam * 3.1 + p.giro * 3.7 + p.incl * 4.3
+                  + p.ladeo * 5.9 + p.foco * 6.1 + p.vis * 7.3 + p.sombra * 8.9 + (z.ip + 1) * .001
+                  + wRepisa * 10.3 + z.hover * 11.9;
+    huella += termino;
+    movimiento += termino - vaiven * 3.7;   // lo mismo sin el vaivén: decide cuándo se pueden subir texturas
+    const escala = p.tam * anchoMundo;
+    z.giroGrupo.rotation.y = p.giro;
+    z.giroGrupo.position.y = .045 * z.hover;                       // se levanta de su repisa
+    z.sombra.position.y = -z.alto / 2 - .003 - .045 * z.hover;     // la sombra se queda en la repisa
+    ponerRepisa(z, wRepisa, Math.max(z.hover, modo.explorar * z.sel.peso * .7));
+    z.grupo.rotation.set(p.incl, 0, p.ladeo);
+    z.grupo.scale.setScalar(escala);
+    z.grupo.position.set(0, 0, 0);
+    z.grupo.updateMatrixWorld(true);
+    // foco: desplaza el tenis para que la firma quede donde iría su centro
+    const piv = p.foco > 0 ? z.giroGrupo.localToWorld(tmp.set(p.px, p.py, p.pz)) : tmp.set(0, 0, 0);
+    z.grupo.position.set(p.x * anchoMundo - piv.x * p.foco, p.y * altoMundo - piv.y * p.foco, p.z * anchoMundo - piv.z * p.foco);
+    z.grupo.updateMatrixWorld(true);
+    z.sombra.material.opacity = p.sombra * clamp(p.vis, 0, 1) * (1 - .35 * z.hover);
+  }
+  if(Math.abs(movimiento - movimientoPrev) > 1e-4) quietoDesde = now;
+  movimientoPrev = movimiento;
+  const cambio = pendiente || Math.abs(huella - huellaPrev) > 1e-5;
+  if(cambio || hotspotsMoviendo) hotspotsMoviendo = moverHotspots(dt);
+  if(cambio) moverRotulos(tCol * (1 - modo.explorar));
+  if(!cambio){ medidor.ultimo = 0; return; }
+  renderer.render(scene, camera);
+  huellaPrev = huella; pendiente = false;
+  medir(now);
+}
+
+// devuelve si alguno sigue apareciendo o desapareciendo (para seguir actualizándolos sin redibujar)
+function moverHotspots(dt){
+  const w = lienzo.w, hgt = lienzo.h;   // medidas guardadas: leer clientWidth aquí forzaría un reflow
+  const actual = paradas[paradaActual];
+  const panelAbierto = panel.classList.contains('abierto');
+  let moviendo = false;
+  for(const m of marcas){
+    if(!m.el) continue;
+    const z = m.z;
+    // qué firmas se marcan: la de la parada; en explorar, todas las del tenis elegido
+    const enParada = lineaTiempo ? clamp(1 - Math.abs(lineaTiempo.time() - m.parada) * 3.2, 0, 1) : (actual?.marca === m ? 1 : 0);
+    let quiero = modo.explorar > .5 ? (z.id === explorarId ? 1 : 0) : enParada;
+    if(panelAbierto || !z.listo || !z.grupo.visible) quiero = 0;
+    m.peso += (quiero - m.peso) * (1 - Math.exp(-dt * 6));
+    if(Math.abs(quiero - m.peso) > .002) moviendo = true;
+    // al DOM solo lo que cambió: cada escritura de estilo (y más la variable --e, que heredan sus
+    // hijos) obliga a recalcular estilos
+    if(m.peso < .01){ escribirHotspot(m, null, '0', false); continue; }
+    const pos = z.giroGrupo.localToWorld(tmp.copy(m.p));
+    const n = tmpN.copy(m.n).transformDirection(z.giroGrupo.matrixWorld);
+    const mira = n.dot(aCam.copy(camera.position).sub(pos).normalize());
+    const alfa = m.peso * clamp((mira - .12) / .25, 0, 1);
+    pos.project(camera);
+    escribirHotspot(m, `translate3d(${((pos.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pos.y) / 2 * hgt).toFixed(1)}px, 0)`,
+                    alfa.toFixed(2), alfa > .4);
+  }
+  return moviendo;
+}
+function escribirHotspot(m, transform, alfa, activo){
+  if(transform && transform !== m.ultTransform){ m.el.style.transform = m.ultTransform = transform; }
+  if(alfa !== m.ultAlfa){ m.el.style.opacity = m.ultAlfa = alfa; m.el.style.setProperty('--e', alfa); }
+  if(activo !== m.activo){ m.activo = activo; m.el.classList.toggle('activo', activo); m.el.tabIndex = activo ? 0 : -1; }
+}
+
+// el lienzo mide lo que mida su escenario (la ventana, o la pantalla completa en modo explorar)
+const lienzo = {w: 0, h: 0};
+function ajustarTamano(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w || !h) return;
+  lienzo.w = w; lienzo.h = h;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+  medirPared();
+  pedirDibujo();
+}
+new ResizeObserver(ajustarTamano).observe(canvas);
+ajustarTamano();
+
+/* ---------------------------------------------------------
+   10. DEPURACIÓN (?debug): clic sobre un tenis → coordenadas para una firma nueva
+--------------------------------------------------------- */
+function depurar({z, hit}){
+  const p = z.giroGrupo.worldToLocal(hit.point.clone());
+  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
+             .transformDirection(z.giroGrupo.matrixWorld.clone().invert());
+  const r = (v)=> v.toArray().map(x => +x.toFixed(4));
+  console.log(`[debug] ${z.id} "punto": ${JSON.stringify(r(p))}, "normal": ${JSON.stringify(r(n))}`);
+}
+// renderer.info.render.frame cuenta los cuadros dibujados (para revisar que en reposo no dibuje)
+if(DEBUG) window.tenisDebug = {zapatos, porId, marcas, modo, paradas, entrarExplorar, elegirExplorar, renderer, scene, camera, THREE,
+  // deja un tenis en modo explorar con un giro, inclinación y zoom exactos (sin animación)
+  vista(id, giro, incl = 0, zoom = 1){
+    html.classList.add('explorando', 'bloqueado');
+    elegirExplorar(id, false); modo.explorar = 1;
+    const z = porId.get(id); z.velU = 0; z.giroU = giro - z.estado.giro;
+    inclUsuario = incl; zoomUsuario = zoom;
+  },
+  // coordenadas de firma bajo un punto de la pantalla
+  puntoEn(x, y){
+    const bajo = tenisBajo({clientX: x, clientY: y});
+    if(!bajo) return null;
+    const p = bajo.z.giroGrupo.worldToLocal(bajo.hit.point.clone());
+    const n = bajo.hit.face.normal.clone().transformDirection(bajo.hit.object.matrixWorld)
+                 .transformDirection(bajo.z.giroGrupo.matrixWorld.clone().invert());
+    const r = (v)=> v.toArray().map(c => +c.toFixed(4));
+    return {id: bajo.z.id, punto: r(p), normal: r(n)};
+  }};
+</script>
+</body>
+</html>
