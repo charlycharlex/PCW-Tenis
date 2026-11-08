@@ -1,0 +1,4 @@
+interface:
+  display_name: "IMMVIS Creative Direction"
+  short_description: "Dirección de arte, UI/UX y 3D distintivo para experiencias web"
+  default_prompt: "Usa $immvis-creative-direction para proponer un concepto visual original, desarrollar sus activos 3D y auditar cualquier patrón genérico antes de implementar."
