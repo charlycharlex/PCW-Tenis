@@ -443,6 +443,9 @@ h1 em,h2 em{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-w
 #museo-apertura .apertura-titulo i{font-weight:400}
 #museo-apertura .apertura-pie{display:flex;gap:15px;align-items:center;font:700 9px Manrope,sans-serif;letter-spacing:.2em}
 #museo-apertura .apertura-pie::before{content:"";display:block;width:45px;height:1px;background:currentColor}
+/* Keep exit control fully operable: original fixed header can overlap its hit target. */
+html.explorando header.barra{opacity:0;pointer-events:none}
+html.explorando header.barra *{pointer-events:none!important}
 /* Escape all nonessential HUD from 360 inspect mode */
 html.museo-noche .museo-hud,html.museo-noche .museo-enlaces,html.museo-noche .museo-leyenda{color:#eee9df}
 html.museo-noche .museo-enlaces button{color:#eee9df;border-color:rgba(238,233,223,.3)}
