@@ -693,7 +693,7 @@ html.explorando .museo-leyenda,html.enfocado .museo-leyenda{opacity:0;pointer-ev
     });
   });
 
-  document.querySelectorAll('#recorrido .paso').forEach(function(s){ s.dataset.tono = s.dataset.par && s.dataset.par !== D.pares[0].id ? 'oscuro' : 'claro'; });
+  document.querySelectorAll('#recorrido .paso').forEach(function(s){ s.dataset.tono = s.dataset.tipo === 'marca' || (s.dataset.par && s.dataset.par !== D.pares[0].id) ? 'oscuro' : 'claro'; });
   var nTenis = D.pares.reduce(function(n, p){ return n + p.tenis.length; }, 0);
   var cifras = el('div', {clase: 'cifras'}, [
     el('div', {}, [el('b', {texto: String(D.pares.length)}), el('span', {texto: 'pares'})]),
