@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palmer Cooper Wallace — Tenis firmados</title>
+<title>PCW — The Signature Archive · IMMVIS Concept B</title>
 <meta name="description" content="Cada proyecto que terminamos, el cliente nos lo firma en unos tenis. Gíralos en 3D y encuentra las marcas con las que hemos trabajado.">
 <link rel="icon" href="data:,"><!-- sin ícono propio: evita que el navegador pida /favicon.ico (404) -->
 
@@ -318,9 +318,80 @@
     *{animation-duration:.001s !important; transition-duration:.2s !important;}
   }
 </style>
+<style id="immvis-concept-b">
+
+/* IMMVIS / SIGNATURE ARCHIVE — alternative editorial direction */
+:root{--papel:#f0ece3;--tinta:#211f1d;--tinta-suave:#625e57;--marino:#191b1c;--magenta:#cb164c;--linea:rgba(33,31,29,.20);--fondo:var(--papel);--texto:var(--tinta);--texto-suave:var(--tinta-suave)}
+.tono-oscuro{--fondo:#17191b;--texto:#f4efe5;--texto-suave:#b4b2ae;--linea:rgba(244,239,229,.24)}
+html,body{background:#f0ece3}
+#tenis{background:var(--fondo)}
+header.barra{padding:26px clamp(24px,3.8vw,68px);align-items:flex-start;gap:20px}
+header.barra::after{content:"PCW / THE SIGNATURE ARCHIVE";position:absolute;top:86px;left:clamp(24px,3.8vw,68px);font:700 9px/1.4 'Manrope',sans-serif;letter-spacing:.2em;opacity:.58;color:var(--texto);pointer-events:none}
+.marca{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.045em;font-size:clamp(20px,2.2vw,29px);line-height:.93;max-width:220px}
+.marca small{font-family:'Manrope',sans-serif;letter-spacing:.24em;font-size:8px;font-weight:700;margin-top:12px}
+.boton{border-radius:0!important;padding:13px 20px;letter-spacing:.08em;text-transform:uppercase;font-size:10px;font-weight:800;border:1px solid currentColor;transition:background .3s,color .3s,transform .3s}
+.boton.fantasma{background:transparent;backdrop-filter:none;box-shadow:none;color:var(--texto)}
+.boton.fantasma:hover{background:var(--texto);color:var(--fondo)}
+.paso{padding:110px clamp(24px,9vw,156px) 72px;align-items:flex-end}
+.paso[data-lado="der"]{align-items:center}
+.paso[data-lado="centro"]{padding-bottom:78px}
+.texto{max-width:530px;transform:translateY(35px)}
+.etiqueta{font-size:10px;letter-spacing:.25em;margin-bottom:24px;font-weight:800;color:var(--magenta)}
+h1,h2,.paso[data-tipo="marca"] h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.068em;line-height:.88;text-wrap:balance}
+h1{font-size:clamp(64px,8.3vw,143px)}
+h2{font-size:clamp(49px,6.2vw,99px)}
+.paso[data-tipo="marca"] h2{font-size:clamp(51px,7.4vw,115px)}
+h1 em,h2 em{color:var(--magenta);font-style:italic}
+.texto p{max-width:390px;font-size:14px;line-height:1.8;letter-spacing:.01em;margin-top:27px}
+.texto .acciones{margin-top:32px}
+.pista{font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-top:35px}
+.paso[data-lado="centro"] .texto{max-width:720px}
+.cifras{gap:34px;margin-top:25px}
+.cifras b{font-family:Georgia,serif;font-size:45px;font-weight:400}
+.cifras span{font-size:10px;text-transform:uppercase;letter-spacing:.1em}
+.chips{gap:7px;margin-top:26px}
+.chip{border-radius:0;border:1px solid var(--linea);font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:9px 12px;background:transparent}
+.chip:hover{background:var(--magenta);color:#fff}
+.hotspot .nombre{background:var(--texto);color:var(--fondo);border-radius:0;font-size:10px;letter-spacing:.1em;box-shadow:none;padding:10px 12px}
+.hotspot .anillo{border-color:var(--magenta);box-shadow:0 0 0 2px var(--fondo)}
+.hotspot .guia{background:var(--magenta)}
+.rotulo{letter-spacing:.21em;font-size:10px}
+.rotulo::after{border-radius:0;box-shadow:none;height:1px}
+#panel h3{font-family:Georgia,serif;letter-spacing:-.055em;font-weight:400}
+.archive-index{position:fixed;left:clamp(24px,3.8vw,68px);bottom:30px;z-index:5;pointer-events:none;color:var(--texto);display:flex;align-items:center;gap:13px;transition:opacity .25s ease}
+.archive-index .rule{display:block;width:32px;height:1px;background:currentColor}
+.archive-index span{font-size:9px;text-transform:uppercase;letter-spacing:.19em;font-weight:700}
+.archive-vertical{position:fixed;right:clamp(14px,2vw,38px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl;z-index:5;pointer-events:none;color:#7d7b76;font-size:9px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.archive-intro{position:absolute;z-index:3;left:clamp(24px,3.8vw,68px);top:50%;writing-mode:vertical-rl;transform:translateY(-50%) rotate(180deg);color:var(--texto-suave);pointer-events:none;font-size:9px;letter-spacing:.25em;text-transform:uppercase;opacity:.65}
+html.explorando .archive-index,html.enfocado .archive-index,html.explorando .archive-vertical,html.enfocado .archive-vertical{opacity:0}
+html.con-repisas .paso[data-tipo="coleccion"] h2{font-size:clamp(23px,2.8vw,38px);font-family:Georgia,serif}
+@media(min-width:1100px){.paso[data-lado="der"]{padding-right:clamp(50px,10vw,180px)}.paso[data-lado="der"] .texto{max-width:410px}}
+@media(max-width:767px){
+header.barra{padding:17px 16px}
+header.barra::after{top:73px;left:16px;font-size:7px}
+.marca{font-size:19px;max-width:155px}
+.marca small{font-size:7px;margin-top:6px;letter-spacing:.12em}
+header.barra .boton{padding:9px 11px;font-size:9px;max-width:145px;text-align:center}
+.archive-index{left:16px;bottom:12px}.archive-index span{font-size:7px}.archive-index .rule{width:16px}
+.archive-vertical,.archive-intro{display:none}
+.paso,.paso[data-lado="der"],.paso[data-lado="centro"]{padding:100px 15px 42px;align-items:flex-end}
+.texto{background:color-mix(in srgb,var(--fondo) 95%,transparent);border-radius:0;padding:21px 18px 22px;border-left:2px solid var(--magenta);width:100%;max-width:none}
+h1{font-size:clamp(48px,13vw,78px)}h2,.paso[data-tipo="marca"] h2{font-size:clamp(41px,11.5vw,68px)}
+.etiqueta{font-size:9px;letter-spacing:.18em;margin-bottom:12px}
+.texto p{font-size:12px;line-height:1.65;margin-top:17px}
+.texto .acciones{margin-top:18px}.pista{margin-top:17px;font-size:9px}
+.cifras{gap:13px}.cifras b{font-size:30px}.chip{font-size:9px;padding:7px 9px}
+html.con-repisas .paso[data-tipo="coleccion"] .texto{padding:14px 18px}
+}
+@media(prefers-reduced-motion:reduce){.texto{transform:none}}
+
+</style>
 </head>
 <body>
+<!-- IMMVIS alternative design: same existing models and tested interactions -->
 
+<div class="archive-index" aria-hidden="true"><i class="rule"></i><span>PCW / Vol. 01 — Objects of trust</span></div>
+<div class="archive-vertical" aria-hidden="true">Creative relationships, documented in ink · 2022—2026</div>
 <header class="barra">
   <a class="marca" href="https://palmercooperwallace.com/">Palmer Cooper Wallace<small>Tenis firmados</small></a>
   <button class="boton fantasma" type="button" data-explorar data-requiere-3d>Explorar en 360°</button>
@@ -330,6 +401,7 @@
      (más #panel, #explorar-ui, el bloque de datos y los scripts). -->
 <div id="tenis">
 <div class="escenario">
+<div class="archive-intro" aria-hidden="true">Objects with a story / PCW collection</div>
   <div id="cargando" role="status" aria-live="polite">
     <div class="barra-progreso"><i></i></div>
     <span>Cargando los tenis…</span>
